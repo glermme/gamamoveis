@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gama Móveis — Design & Sofisticação</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --cream:#F7F3EE;--cream-dark:#EDE7DC;--sand:#D4C5B0;--warm:#8B7355;
+  --espresso:#2C1810;--charcoal:#1C1C1A;--gold:#B8965A;--gold-light:#E8D5B0;
+  --white:#FEFCF9;--gray:#9A9189;
+}
+html{scroll-behavior:smooth}
+body{font-family:'Jost',sans-serif;background:var(--cream);color:var(--charcoal);cursor:none;overflow-x:hidden}
+.cursor{position:fixed;width:8px;height:8px;background:var(--charcoal);border-radius:50%;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);transition:width .2s,height .2s}
+.cursor-ring{position:fixed;width:36px;height:36px;border:1px solid var(--charcoal);border-radius:50%;pointer-events:none;z-index:9998;transform:translate(-50%,-50%);transition:all .12s ease;opacity:0.4}
+.loader{position:fixed;inset:0;background:var(--espresso);z-index:10000;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1rem;transition:opacity .8s,visibility .8s}
+.loader.hide{opacity:0;visibility:hidden;pointer-events:none}
+.loader-logo{font-family:'Cormorant Garamond',serif;font-size:3rem;font-weight:300;color:var(--cream);letter-spacing:6px;opacity:0;animation:fadeUp .8s .3s forwards}
+.loader-line{width:0;height:1px;background:var(--gold);animation:grow 1s .6s forwards}
+.loader-sub{font-size:0.7rem;letter-spacing:4px;color:var(--sand);opacity:0;animation:fadeUp .6s 1s forwards;text-transform:uppercase}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes grow{to{width:120px}}
+
+/* NAV — branco no hero, escuro após scroll */
+nav{position:fixed;top:0;left:0;right:0;z-index:500;padding:1.8rem 5%;display:flex;align-items:center;justify-content:space-between;transition:all .4s}
+nav.scrolled{background:rgba(247,243,238,0.96);backdrop-filter:blur(12px);padding:1.2rem 5%;border-bottom:1px solid var(--cream-dark)}
+.nav-logo{font-family:'Cormorant Garamond',serif;font-size:1.6rem;font-weight:300;letter-spacing:4px;text-decoration:none;text-transform:uppercase;color:var(--white);transition:color .4s}
+.nav-logo em{font-style:italic;color:var(--gold)}
+nav.scrolled .nav-logo{color:var(--charcoal)}
+nav.scrolled .nav-links a{color:var(--charcoal)}
+nav.scrolled .hamburger-gama span{background:var(--charcoal)}
+nav.scrolled .nav-icon{color:var(--charcoal)}
+.nav-links{display:flex;gap:2.5rem;list-style:none}
+.nav-links a{text-decoration:none;color:rgba(255,255,255,0.85);font-size:0.75rem;letter-spacing:2.5px;text-transform:uppercase;font-weight:400;position:relative;padding-bottom:4px;transition:color .4s}
+.nav-links a::after{content:'';position:absolute;bottom:0;left:0;width:0;height:1px;background:var(--gold);transition:width .3s}
+.nav-links a:hover::after{width:100%}
+.nav-actions{display:flex;align-items:center;gap:1.2rem}
+.nav-icon{background:none;border:none;cursor:none;font-size:1.1rem;color:rgba(255,255,255,0.85);transition:color .3s;position:relative}
+.nav-icon:hover{color:var(--gold)}
+.cart-dot{position:absolute;top:-4px;right:-4px;width:14px;height:14px;background:var(--gold);border-radius:50%;font-size:0.6rem;color:var(--white);display:flex;align-items:center;justify-content:center;font-weight:500}
+.hamburger-gama{display:none;flex-direction:column;gap:5px;cursor:none;background:none;border:none;padding:4px}
+.hamburger-gama span{display:block;height:1px;background:rgba(255,255,255,0.85);transition:.3s}
+.hamburger-gama span:first-child{width:24px}
+.hamburger-gama span:nth-child(2){width:16px}
+.hamburger-gama span:last-child{width:20px}
+
+/* HERO */
+.hero{height:100vh;display:grid;grid-template-columns:1fr 1fr;position:relative;overflow:hidden}
+.hero-left{background:var(--espresso);display:flex;flex-direction:column;justify-content:flex-end;padding:6rem 4rem 5rem;position:relative;overflow:hidden}
+.hero-left::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none'%3E%3Cg fill='%23ffffff' fill-opacity='0.02'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")}
+.hero-number{font-family:'Cormorant Garamond',serif;font-size:clamp(7rem,14vw,13rem);font-weight:300;color:rgba(255,255,255,0.06);line-height:1;position:absolute;top:3rem;right:-1rem;letter-spacing:-4px;user-select:none}
+.hero-tag{font-size:0.65rem;letter-spacing:4px;text-transform:uppercase;color:var(--gold);margin-bottom:1.5rem;display:flex;align-items:center;gap:0.8rem}
+.hero-tag::before{content:'';display:block;width:30px;height:1px;background:var(--gold)}
+.hero h1{font-family:'Cormorant Garamond',serif;font-size:clamp(2.5rem,5vw,4.5rem);font-weight:300;color:var(--cream);line-height:1.1;margin-bottom:1.5rem}
+.hero h1 em{font-style:italic;color:var(--gold-light)}
+.hero-desc{color:var(--sand);font-size:0.88rem;line-height:1.8;max-width:320px;margin-bottom:2.5rem;font-weight:300}
+.hero-ctas{display:flex;gap:1rem;align-items:center;flex-wrap:wrap}
+.btn-gold{background:var(--gold);color:var(--white);border:none;padding:0.9rem 2.2rem;font-size:0.72rem;letter-spacing:3px;text-transform:uppercase;font-family:'Jost',sans-serif;cursor:none;text-decoration:none;display:inline-block;transition:all .3s}
+.btn-gold:hover{background:var(--espresso);color:var(--gold)}
+.btn-ghost{background:transparent;color:var(--cream);border:1px solid rgba(255,255,255,0.2);padding:0.9rem 2.2rem;font-size:0.72rem;letter-spacing:3px;text-transform:uppercase;font-family:'Jost',sans-serif;cursor:none;text-decoration:none;display:inline-block;transition:all .3s}
+.btn-ghost:hover{border-color:var(--gold);color:var(--gold)}
+.hero-right{background:var(--cream-dark);position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center}
+.hero-right-bg{position:absolute;inset:0;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr}
+/* células hero — object-fit cover */
+.hrb-cell{overflow:hidden;position:relative}
+.hrb-cell img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .6s}
+.hrb-cell:hover img{transform:scale(1.06)}
+.hrb-1{background:#D6CBBC}.hrb-2{background:#C8B99F}.hrb-3{background:#BFB095}.hrb-4{background:#B8A78A}
+.hero-card{position:relative;z-index:2;background:var(--white);padding:2rem;box-shadow:0 30px 80px rgba(0,0,0,0.15);max-width:260px;animation:floatCard 6s ease-in-out infinite}
+@keyframes floatCard{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+.hero-card-label{font-size:0.62rem;letter-spacing:3px;text-transform:uppercase;color:var(--gray);margin-bottom:0.8rem}
+.hero-card-name{font-family:'Cormorant Garamond',serif;font-size:1.3rem;font-weight:400;margin-bottom:0.3rem}
+.hero-card-price{color:var(--gold);font-size:1rem;font-weight:500;margin-bottom:1rem}
+.hero-card-bar{height:2px;background:var(--cream-dark);margin-top:0.8rem;position:relative}
+.hero-card-bar::after{content:'';position:absolute;left:0;top:0;height:100%;width:70%;background:var(--gold)}
+.hero-scroll{position:absolute;bottom:2rem;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:0.5rem;color:var(--sand);font-size:0.62rem;letter-spacing:2px;text-transform:uppercase;animation:bounce 2s infinite}
+@keyframes bounce{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(5px)}}
+.scroll-line{width:1px;height:40px;background:linear-gradient(to bottom,var(--gold),transparent)}
+
+/* MARQUEE */
+.marquee-section{background:var(--gold);padding:0.9rem 0;overflow:hidden}
+.marquee-track{display:flex;gap:3rem;animation:marquee 20s linear infinite;white-space:nowrap}
+.marquee-track span{font-size:0.65rem;letter-spacing:3px;text-transform:uppercase;color:var(--white);font-weight:400}
+.marquee-dot{color:rgba(255,255,255,0.4)}
+@keyframes marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+/* ABOUT */
+.about-strip{padding:5rem 5%;display:grid;grid-template-columns:1fr 2px 1fr 2px 1fr;gap:3rem;align-items:center}
+.about-divider{height:80px;background:var(--sand);align-self:center}
+.about-item{text-align:center}
+.about-num{font-family:'Cormorant Garamond',serif;font-size:3.5rem;font-weight:300;color:var(--espresso);line-height:1}
+.about-num em{font-style:italic;color:var(--gold);font-size:2rem}
+.about-label{font-size:0.68rem;letter-spacing:2.5px;text-transform:uppercase;color:var(--gray);margin-top:0.5rem}
+
+/* COLLECTIONS */
+.collections{padding:5rem 5%}
+.section-eyebrow{font-size:0.65rem;letter-spacing:4px;text-transform:uppercase;color:var(--gold);margin-bottom:0.8rem;display:flex;align-items:center;gap:0.8rem}
+.section-eyebrow::before{content:'';display:block;width:24px;height:1px;background:var(--gold)}
+.section-title{font-family:'Cormorant Garamond',serif;font-size:clamp(2rem,4vw,3.2rem);font-weight:300;color:var(--espresso);line-height:1.15;margin-bottom:3rem}
+.section-title em{font-style:italic}
+.coll-grid{display:grid;grid-template-columns:1.3fr 1fr 1fr;grid-template-rows:280px 280px;gap:1.5rem}
+.coll-card{position:relative;overflow:hidden;cursor:none}
+.coll-card:first-child{grid-row:1/3}
+/* imagem coleção — object-fit cover */
+.coll-bg{width:100%;height:100%;overflow:hidden;position:relative}
+.coll-bg img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .6s}
+.coll-card:hover .coll-bg img{transform:scale(1.04)}
+.coll-fallback{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:6rem}
+.cf-1{background:linear-gradient(145deg,#3D2B1F,#5C3D2E)}
+.cf-2{background:linear-gradient(145deg,#C8B99F,#D6CBBC)}
+.cf-3{background:linear-gradient(145deg,#8B7355,#A08060)}
+.cf-4{background:linear-gradient(145deg,#1C1C1A,#2C2C28)}
+.cf-5{background:linear-gradient(145deg,#B8965A,#C8A870)}
+.coll-overlay{position:absolute;inset:0;background:linear-gradient(to top,rgba(0,0,0,0.72) 0%,transparent 60%);opacity:0.25;transition:opacity .4s;z-index:1}
+.coll-card:hover .coll-overlay{opacity:1}
+.coll-info{position:absolute;bottom:0;left:0;right:0;padding:1.5rem;transform:translateY(8px);transition:transform .4s;z-index:2;opacity:0}
+.coll-card:hover .coll-info{opacity:1;transform:none}
+.coll-cat{font-size:0.6rem;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:0.4rem}
+.coll-name{font-family:'Cormorant Garamond',serif;font-size:1.4rem;color:var(--white);font-weight:300}
+.coll-badge{position:absolute;top:1.2rem;left:1.2rem;background:var(--gold);color:var(--white);font-size:0.6rem;letter-spacing:2px;text-transform:uppercase;padding:4px 10px;z-index:3}
+
+/* PRODUCTS */
+.products-section{padding:4rem 5% 6rem;background:var(--white)}
+.products-header{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:3rem;flex-wrap:wrap;gap:1rem}
+.filter-tabs{display:flex;border:1px solid var(--cream-dark);flex-wrap:wrap}
+.filter-tab{padding:0.55rem 1.4rem;font-size:0.68rem;letter-spacing:2px;text-transform:uppercase;border:none;background:transparent;cursor:none;color:var(--gray);transition:all .2s;font-family:'Jost',sans-serif;border-right:1px solid var(--cream-dark)}
+.filter-tab:last-child{border-right:none}
+.filter-tab.active,.filter-tab:hover{background:var(--espresso);color:var(--cream)}
+.prod-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:2rem}
+.prod-card{background:var(--cream);position:relative;overflow:hidden;cursor:none;transition:box-shadow .4s}
+.prod-card:hover{box-shadow:0 20px 60px rgba(0,0,0,0.1)}
+/* imagem produto — object-fit cover */
+.prod-img{height:220px;position:relative;overflow:hidden;background:var(--cream-dark)}
+.prod-img img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .5s}
+.prod-card:hover .prod-img img{transform:scale(1.04)}
+.prod-img-fallback{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:5rem;transition:background .3s}
+.prod-card:hover .prod-img-fallback{background:var(--sand)}
+.prod-actions{position:absolute;right:1rem;top:50%;transform:translateY(-50%) translateX(50px);display:flex;flex-direction:column;gap:0.5rem;transition:transform .35s;z-index:2}
+.prod-card:hover .prod-actions{transform:translateY(-50%) translateX(0)}
+.prod-action-btn{width:38px;height:38px;background:var(--white);border:none;cursor:none;display:flex;align-items:center;justify-content:center;font-size:1rem;transition:all .2s;box-shadow:0 2px 12px rgba(0,0,0,0.1)}
+.prod-action-btn:hover{background:var(--gold);color:var(--white)}
+.prod-badge{position:absolute;top:1rem;left:1rem;font-size:0.6rem;letter-spacing:2px;text-transform:uppercase;padding:4px 10px;font-weight:400;z-index:2}
+.badge-new{background:var(--espresso);color:var(--cream)}.badge-sale{background:var(--gold);color:var(--white)}
+.prod-info{padding:1.4rem 1.4rem 1.6rem}
+.prod-cat-label{font-size:0.62rem;letter-spacing:2.5px;text-transform:uppercase;color:var(--gray);margin-bottom:0.5rem}
+.prod-name{font-family:'Cormorant Garamond',serif;font-size:1.2rem;font-weight:400;color:var(--espresso);margin-bottom:0.8rem;line-height:1.3}
+.prod-footer{display:flex;justify-content:space-between;align-items:center}
+.prod-price-old{font-size:0.78rem;color:var(--gray);text-decoration:line-through;display:block;line-height:1.2}
+.prod-price-val{color:var(--gold);font-size:1rem;font-weight:500}
+.btn-add-cart{background:none;border:1px solid var(--espresso);color:var(--espresso);padding:0.5rem 1rem;font-size:0.65rem;letter-spacing:2px;text-transform:uppercase;cursor:none;font-family:'Jost',sans-serif;transition:all .25s}
+.btn-add-cart:hover,.btn-add-cart.added{background:var(--espresso);color:var(--cream)}
+.btn-add-cart.added{border-color:var(--gold);background:var(--gold)}
+.loading-state{text-align:center;padding:4rem;color:var(--gray);grid-column:1/-1}
+.loading-spinner{width:32px;height:32px;border:2px solid var(--cream-dark);border-top-color:var(--gold);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 1rem}
+@keyframes spin{to{transform:rotate(360deg)}}
+.error-state{text-align:center;padding:3rem;color:var(--gray);background:var(--cream-dark);border:1px dashed var(--sand);grid-column:1/-1}
+.error-state strong{display:block;font-family:'Cormorant Garamond',serif;font-size:1.2rem;color:var(--espresso);margin-bottom:0.5rem}
+
+/* LIFESTYLE */
+.lifestyle{margin:0 5% 5rem;display:grid;grid-template-columns:1fr 1fr;min-height:500px;overflow:hidden}
+.lifestyle-left{background:var(--espresso);padding:4rem;display:flex;flex-direction:column;justify-content:center;position:relative;overflow:hidden}
+.lifestyle-left::after{content:'Gama';font-family:'Cormorant Garamond',serif;font-size:12rem;font-weight:300;color:rgba(255,255,255,0.03);position:absolute;bottom:-2rem;right:-2rem;line-height:1;pointer-events:none}
+.lifestyle-eyebrow{font-size:0.62rem;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:1.2rem}
+.lifestyle-left h2{font-family:'Cormorant Garamond',serif;font-size:clamp(2rem,3.5vw,3rem);font-weight:300;color:var(--cream);line-height:1.2;margin-bottom:1.2rem}
+.lifestyle-left p{color:var(--sand);font-size:0.88rem;line-height:1.9;font-weight:300;max-width:360px;margin-bottom:2rem}
+/* lifestyle right — object-fit cover */
+.lifestyle-right{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr}
+.lr-cell{overflow:hidden;position:relative}
+.lr-cell img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .5s}
+.lr-cell:hover img{transform:scale(1.06)}
+.lr-fallback{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:4rem;transition:background .3s}
+.lr-c1 .lr-fallback{background:#D6CBBC}.lr-c2 .lr-fallback{background:#C8B99F}
+.lr-c3 .lr-fallback{background:#BFB095}.lr-c4 .lr-fallback{background:#B8A78A}
+.lr-cell:hover .lr-fallback{background:var(--sand)}
+
+/* TESTIMONIALS */
+.testimonials{padding:5rem 5%;background:var(--cream-dark)}
+.test-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:2rem;margin-top:3rem}
+.test-card{background:var(--white);padding:2.5rem;position:relative}
+.test-quote{font-family:'Cormorant Garamond',serif;font-size:4rem;color:var(--gold-light);line-height:1;position:absolute;top:1.2rem;right:1.5rem;font-style:italic}
+.test-text{font-family:'Cormorant Garamond',serif;font-size:1.1rem;font-weight:300;color:var(--espresso);line-height:1.7;margin-bottom:1.5rem;font-style:italic}
+.test-stars{color:var(--gold);font-size:0.8rem;margin-bottom:1rem;letter-spacing:2px}
+.test-author{border-top:1px solid var(--cream-dark);padding-top:1rem;display:flex;align-items:center;gap:1rem}
+.test-avatar{width:40px;height:40px;border-radius:50%;background:var(--espresso);display:flex;align-items:center;justify-content:center;font-family:'Cormorant Garamond',serif;color:var(--cream);font-size:1rem}
+.test-author-info strong{display:block;font-size:0.85rem;font-weight:500;color:var(--espresso)}
+.test-author-info span{font-size:0.72rem;color:var(--gray);letter-spacing:1px}
+
+/* NEWSLETTER */
+.newsletter{padding:6rem 5%;text-align:center;background:var(--espresso);position:relative;overflow:hidden}
+.newsletter::before{content:'';position:absolute;width:400px;height:400px;border:1px solid rgba(184,150,90,0.15);border-radius:50%;top:50%;left:50%;transform:translate(-50%,-50%)}
+.newsletter::after{content:'';position:absolute;width:600px;height:600px;border:1px solid rgba(184,150,90,0.08);border-radius:50%;top:50%;left:50%;transform:translate(-50%,-50%)}
+.newsletter-content{position:relative;z-index:1}
+.newsletter h2{font-family:'Cormorant Garamond',serif;font-size:clamp(2rem,4vw,3.5rem);font-weight:300;color:var(--cream);margin-bottom:0.8rem}
+.newsletter h2 em{font-style:italic;color:var(--gold-light)}
+.newsletter p{color:var(--sand);font-size:0.88rem;margin-bottom:2.5rem;font-weight:300}
+.nl-form{display:flex;max-width:420px;margin:0 auto;border:1px solid rgba(184,150,90,0.4)}
+.nl-form input{flex:1;background:transparent;border:none;padding:1rem 1.2rem;color:var(--cream);font-size:0.85rem;outline:none;font-family:'Jost',sans-serif}
+.nl-form input::placeholder{color:rgba(212,197,176,0.5)}
+.nl-form button{background:var(--gold);color:var(--white);border:none;padding:0 1.5rem;font-size:0.65rem;letter-spacing:2.5px;text-transform:uppercase;cursor:none;font-family:'Jost',sans-serif;transition:background .2s}
+.nl-form button:hover{background:var(--warm)}
+
+/* FOOTER */
+footer{background:var(--charcoal);padding:4rem 5% 2rem}
+.footer-top{display:grid;grid-template-columns:1.8fr 1fr 1fr 1fr;gap:3rem;margin-bottom:3rem}
+.footer-logo-area .nav-logo{display:block;font-size:2rem;margin-bottom:1rem;color:var(--cream)}
+.footer-tagline{font-family:'Cormorant Garamond',serif;font-style:italic;color:var(--sand);font-size:1rem;margin-bottom:1.2rem;font-weight:300}
+.footer-desc{font-size:0.82rem;color:#555;line-height:1.8;font-weight:300;max-width:240px}
+.footer-socials{display:flex;gap:0.8rem;margin-top:1.5rem}
+.social-link{width:34px;height:34px;border:1px solid rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;text-decoration:none;color:#666;font-size:0.75rem;transition:all .2s}
+.social-link:hover{border-color:var(--gold);color:var(--gold)}
+.footer-col h4{font-size:0.65rem;letter-spacing:3px;text-transform:uppercase;color:var(--cream);font-weight:400;margin-bottom:1.5rem}
+.footer-col ul{list-style:none}
+.footer-col ul li{margin-bottom:0.7rem}
+.footer-col ul a{color:#555;text-decoration:none;font-size:0.82rem;font-weight:300;transition:color .2s}
+.footer-col ul a:hover{color:var(--gold)}
+.footer-bottom{border-top:1px solid rgba(255,255,255,0.06);padding-top:2rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem}
+.footer-bottom p{font-size:0.75rem;color:#444}
+.footer-payments{display:flex;gap:0.5rem}
+.pay-tag{border:1px solid rgba(255,255,255,0.08);color:#555;font-size:0.68rem;padding:4px 10px;letter-spacing:1px}
+
+/* CART */
+.cart-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:600;justify-content:flex-end;backdrop-filter:blur(4px)}
+.cart-overlay.open{display:flex}
+.cart-panel{background:var(--white);width:100%;max-width:380px;height:100%;display:flex;flex-direction:column;animation:slideIn .4s cubic-bezier(.22,.61,.36,1)}
+@keyframes slideIn{from{transform:translateX(100%)}to{transform:translateX(0)}}
+.cart-head{padding:2rem 1.8rem 1.5rem;border-bottom:1px solid var(--cream-dark);display:flex;justify-content:space-between;align-items:center}
+.cart-head h3{font-family:'Cormorant Garamond',serif;font-size:1.5rem;font-weight:300;color:var(--espresso)}
+.cart-close-btn{background:none;border:none;cursor:none;font-size:0.65rem;letter-spacing:2px;text-transform:uppercase;color:var(--gray)}
+.cart-body{flex:1;overflow-y:auto;padding:1.5rem}
+.cart-item-g{display:flex;gap:1rem;margin-bottom:1.2rem;padding-bottom:1.2rem;border-bottom:1px solid var(--cream-dark)}
+.cig-icon{width:60px;height:60px;background:var(--cream-dark);flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:1.8rem}
+.cig-icon img{width:100%;height:100%;object-fit:cover}
+.cig-details{flex:1}
+.cig-details strong{display:block;font-family:'Cormorant Garamond',serif;font-size:1rem;font-weight:400;color:var(--espresso);margin-bottom:2px}
+.cig-details span{font-size:0.75rem;color:var(--gray);display:block;margin-bottom:6px}
+.cig-actions{display:flex;align-items:center;gap:0.6rem}
+.qty-btn{width:24px;height:24px;border:1px solid var(--cream-dark);background:none;cursor:none;font-size:0.9rem;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.qty-btn:hover{background:var(--espresso);color:var(--white);border-color:var(--espresso)}
+.qty-val{font-size:0.85rem;min-width:24px;text-align:center}
+.cig-price{font-weight:500;color:var(--gold);font-size:0.95rem;white-space:nowrap}
+.cig-remove{background:none;border:none;cursor:none;color:var(--gray);font-size:0.7rem;letter-spacing:1px;text-transform:uppercase;margin-top:4px;display:block;transition:color .2s}
+.cig-remove:hover{color:#E24B4A}
+.cart-empty-g{text-align:center;padding:4rem 1rem;color:var(--gray)}
+.cart-empty-g .empty-icon{font-size:3.5rem;margin-bottom:1rem}
+.cart-empty-g p{font-family:'Cormorant Garamond',serif;font-size:1.1rem;font-style:italic}
+.cart-foot{padding:1.8rem;border-top:1px solid var(--cream-dark)}
+.cart-subtotal{display:flex;justify-content:space-between;margin-bottom:1.5rem}
+.cart-subtotal span:first-child{font-size:0.7rem;letter-spacing:2px;text-transform:uppercase;color:var(--gray)}
+.cart-subtotal span:last-child{font-family:'Cormorant Garamond',serif;font-size:1.4rem;font-weight:300;color:var(--espresso)}
+.btn-finalize{width:100%;background:var(--espresso);color:var(--cream);border:none;padding:1.1rem;font-size:0.68rem;letter-spacing:3px;text-transform:uppercase;cursor:none;font-family:'Jost',sans-serif;transition:background .3s}
+.btn-finalize:hover{background:var(--gold)}
+
+/* MOBILE */
+.mobile-nav{display:none;position:fixed;inset:0;background:var(--espresso);z-index:550;flex-direction:column;justify-content:center;padding:3rem;gap:2rem}
+.mobile-nav.open{display:flex}
+.mobile-nav a{font-family:'Cormorant Garamond',serif;font-size:2.5rem;font-weight:300;color:var(--cream);text-decoration:none;border-bottom:1px solid rgba(255,255,255,0.08);padding-bottom:1.2rem;transition:color .2s}
+.mobile-nav a:hover{color:var(--gold)}
+.mobile-nav-close{position:absolute;top:2rem;right:2rem;background:none;border:none;color:var(--cream);font-size:1.5rem;cursor:none}
+.gama-toast{position:fixed;bottom:2.5rem;left:50%;transform:translateX(-50%) translateY(80px);background:var(--espresso);color:var(--cream);padding:1rem 2rem;font-size:0.78rem;letter-spacing:2px;text-transform:uppercase;z-index:999;transition:transform .4s cubic-bezier(.22,.61,.36,1);border-left:2px solid var(--gold);white-space:nowrap}
+.gama-toast.show{transform:translateX(-50%) translateY(0)}
+.fade-in{opacity:0;transform:translateY(24px);transition:opacity .7s,transform .7s}
+.fade-in.visible{opacity:1;transform:none}
+
+@media(max-width:1000px){
+  .hero{grid-template-columns:1fr}.hero-right{display:none}.hero-left{min-height:100vh;padding:8rem 7% 5rem}
+  .coll-grid{grid-template-columns:1fr 1fr;grid-template-rows:auto}.coll-card:first-child{grid-row:auto}
+  .lifestyle{grid-template-columns:1fr}.lifestyle-right{display:none}
+  .footer-top{grid-template-columns:1fr 1fr}.about-strip{grid-template-columns:1fr 1fr 1fr;gap:1rem}.about-divider{display:none}
+}
+@media(max-width:640px){
+  .nav-links{display:none}.hamburger-gama{display:flex}
+  .about-strip{grid-template-columns:1fr}.coll-grid{grid-template-columns:1fr}
+  .footer-top{grid-template-columns:1fr}.filter-tabs{flex-wrap:wrap}
+  body{cursor:auto}.cursor,.cursor-ring{display:none}*{cursor:auto!important}
+}
+</style>
+</head>
+<body>
+<div class="cursor" id="cursor"></div>
+<div class="cursor-ring" id="cursorRing"></div>
+<div class="loader" id="loader">
+  <div class="loader-logo">GAMA</div>
+  <div class="loader-line"></div>
+  <div class="loader-sub">Móveis & Design</div>
+</div>
+<div class="gama-toast" id="gamaToast"></div>
+<div class="mobile-nav" id="mobileNav">
+  <button class="mobile-nav-close" onclick="closeMobileNav()">✕</button>
+  <a href="#" onclick="closeMobileNav()">Início</a>
+  <a href="#colecoes" onclick="closeMobileNav()">Coleções</a>
+  <a href="#produtos" onclick="closeMobileNav()">Produtos</a>
+  <a href="#sobre" onclick="closeMobileNav()">Sobre</a>
+  <a href="#contato" onclick="closeMobileNav()">Contato</a>
+</div>
+<div class="cart-overlay" id="cartOverlay" onclick="closeCartOuter(event)">
+  <div class="cart-panel">
+    <div class="cart-head"><h3>Seu carrinho</h3><button class="cart-close-btn" onclick="closeCart()">Fechar ✕</button></div>
+    <div class="cart-body" id="cartBody"><div class="cart-empty-g"><div class="empty-icon">🛋️</div><p>Seu carrinho está vazio</p></div></div>
+    <div class="cart-foot"><div class="cart-subtotal"><span>Total</span><span id="cartTotal">R$ 0,00</span></div><button class="btn-finalize" onclick="finalize()">Finalizar Compra</button></div>
+  </div>
+</div>
+
+<nav id="mainNav">
+  <a href="#" class="nav-logo">G<em>ama</em></a>
+  <ul class="nav-links">
+    <li><a href="#colecoes">Coleções</a></li>
+    <li><a href="#produtos">Produtos</a></li>
+    <li><a href="#sobre">Sobre</a></li>
+    <li><a href="#contato">Contato</a></li>
+  </ul>
+  <div class="nav-actions">
+    <button class="nav-icon" onclick="openCart()">🛍️<span class="cart-dot" id="cartDot">0</span></button>
+    <button class="hamburger-gama" onclick="openMobileNav()"><span></span><span></span><span></span></button>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="hero-left">
+    <div class="hero-number">01</div>
+    <div class="hero-tag">Nova Coleção 2025</div>
+    <h1>Espaços que<br>contam <em>histórias</em><br>únicas</h1>
+    <p class="hero-desc">Móveis de alto padrão desenhados para transformar ambientes em expressões da sua personalidade. Design contemporâneo com alma brasileira.</p>
+    <div class="hero-ctas">
+      <a href="#colecoes" class="btn-gold">Explorar coleções</a>
+      <a href="#sobre" class="btn-ghost">Nossa história</a>
+    </div>
+  </div>
+  <div class="hero-right">
+    <div class="hero-right-bg">
+      <div class="hrb-cell hrb-1" id="hrb1"></div>
+      <div class="hrb-cell hrb-2" id="hrb2"></div>
+      <div class="hrb-cell hrb-3" id="hrb3"></div>
+      <div class="hrb-cell hrb-4" id="hrb4"></div>
+    </div>
+    <div class="hero-card">
+      <div class="hero-card-label">Destaque da semana</div>
+      <div class="hero-card-name" id="heroCardName">Sofá Linea</div>
+      <div class="hero-card-price" id="heroCardPrice">R$ 4.890,00</div>
+      <div style="font-size:0.72rem;color:var(--gray);letter-spacing:1px" id="heroCardMat">Couro natural · 3 lugares</div>
+      <div class="hero-card-bar"></div>
+    </div>
+  </div>
+  <div class="hero-scroll"><div class="scroll-line"></div><span>rolar</span></div>
+</section>
+
+<div class="marquee-section">
+  <div class="marquee-track">
+    <span>Design Exclusivo</span><span class="marquee-dot">◆</span><span>Entrega em todo Brasil</span><span class="marquee-dot">◆</span><span>Garantia 5 anos</span><span class="marquee-dot">◆</span><span>Parcelamento 12x</span><span class="marquee-dot">◆</span><span>Consultoria de interiores</span><span class="marquee-dot">◆</span><span>Madeira certificada</span><span class="marquee-dot">◆</span><span>Fabricação nacional</span><span class="marquee-dot">◆</span>
+    <span>Design Exclusivo</span><span class="marquee-dot">◆</span><span>Entrega em todo Brasil</span><span class="marquee-dot">◆</span><span>Garantia 5 anos</span><span class="marquee-dot">◆</span><span>Parcelamento 12x</span><span class="marquee-dot">◆</span><span>Consultoria de interiores</span><span class="marquee-dot">◆</span><span>Madeira certificada</span><span class="marquee-dot">◆</span><span>Fabricação nacional</span><span class="marquee-dot">◆</span>
+  </div>
+</div>
+
+<div class="about-strip" id="sobre">
+  <div class="about-item fade-in"><div class="about-num">12<em>+</em></div><div class="about-label">Anos de experiência</div></div>
+  <div class="about-divider"></div>
+  <div class="about-item fade-in"><div class="about-num">840<em>+</em></div><div class="about-label">Clientes satisfeitos</div></div>
+  <div class="about-divider"></div>
+  <div class="about-item fade-in"><div class="about-num">3<em>k+</em></div><div class="about-label">Produtos no catálogo</div></div>
+</div>
+
+<section class="collections fade-in" id="colecoes">
+  <div class="section-eyebrow">Coleções</div>
+  <h2 class="section-title">Ambientes que<br><em>inspiram</em></h2>
+  <div class="coll-grid" id="collGrid"></div>
+</section>
+
+<section class="products-section" id="produtos">
+  <div class="products-header">
+    <div>
+      <div class="section-eyebrow" style="background:var(--white)">Produtos</div>
+      <h2 class="section-title" style="margin-bottom:0">Mais <em>desejados</em></h2>
+    </div>
+    <div class="filter-tabs" id="filterTabs">
+      <button class="filter-tab active" onclick="filterProd(this,'Todos')">Todos</button>
+    </div>
+  </div>
+  <div class="prod-grid" id="prodGrid">
+    <div class="loading-state"><div class="loading-spinner"></div><p>Carregando produtos...</p></div>
+  </div>
+</section>
+
+<div class="lifestyle fade-in">
+  <div class="lifestyle-left">
+    <div class="lifestyle-eyebrow">Nossa filosofia</div>
+    <h2>Cada peça conta uma história que merece ser vivida</h2>
+    <p>Trabalhamos com madeiras certificadas, tecidos naturais e acabamentos artesanais. Cada móvel Gama é desenvolvido para durar décadas e envelhecer com beleza.</p>
+    <a href="#produtos" class="btn-gold">Ver coleção completa</a>
+  </div>
+  <div class="lifestyle-right">
+    <div class="lr-cell lr-c1" id="lrc1"></div>
+    <div class="lr-cell lr-c2" id="lrc2"></div>
+    <div class="lr-cell lr-c3" id="lrc3"></div>
+    <div class="lr-cell lr-c4" id="lrc4"></div>
+  </div>
+</div>
+
+<section class="testimonials fade-in">
+  <div class="section-eyebrow">Depoimentos</div>
+  <h2 class="section-title">O que nossos clientes<br><em>sentem</em></h2>
+  <div class="test-grid">
+    <div class="test-card"><div class="test-quote">"</div><p class="test-text">A Gama transformou completamente minha sala. A qualidade dos móveis superou todas as expectativas. São peças que vão durar gerações.</p><div class="test-stars">★★★★★</div><div class="test-author"><div class="test-avatar">LC</div><div class="test-author-info"><strong>Luciana Cavalcante</strong><span>Designer de interiores — Natal/RN</span></div></div></div>
+    <div class="test-card"><div class="test-quote">"</div><p class="test-text">Comprei o conjunto para quarto Nox e me apaixonei. O acabamento é impecável e a entrega foi feita com todo cuidado. Recomendo demais!</p><div class="test-stars">★★★★★</div><div class="test-author"><div class="test-avatar">RF</div><div class="test-author-info"><strong>Rafael Fontes</strong><span>Arquiteto — Recife/PE</span></div></div></div>
+    <div class="test-card"><div class="test-quote">"</div><p class="test-text">O atendimento é extraordinário. Me ajudaram a escolher as peças certas para o meu espaço. O resultado ficou como uma revista de decoração!</p><div class="test-stars">★★★★★</div><div class="test-author"><div class="test-avatar">PM</div><div class="test-author-info"><strong>Patrícia Melo</strong><span>Empresária — Fortaleza/CE</span></div></div></div>
+  </div>
+</section>
+
+<section class="newsletter" id="contato">
+  <div class="newsletter-content">
+    <div class="section-eyebrow" style="justify-content:center;color:var(--gold-light)">Exclusividades</div>
+    <h2>Receba as novidades<br><em>em primeira mão</em></h2>
+    <p>Lançamentos, ofertas especiais e dicas de decoração direto no seu e-mail.</p>
+    <div class="nl-form"><input type="email" placeholder="seu@email.com" id="nlEmail"><button onclick="nlSubscribe()">Assinar</button></div>
+    <p style="margin-top:2rem;font-size:0.78rem;color:var(--sand)">📱 (84) 99999-1111 &nbsp;·&nbsp; contato@gamamoveis.com.br &nbsp;·&nbsp; Natal, RN</p>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-top">
+    <div class="footer-logo-area">
+      <a href="#" class="nav-logo">G<em>ama</em></a>
+      <p class="footer-tagline">Móveis & Design</p>
+      <p class="footer-desc">Design contemporâneo com alma brasileira. Cada peça criada para transformar seu espaço em um lugar único.</p>
+      <div class="footer-socials"><a class="social-link" href="#">in</a><a class="social-link" href="#">ig</a><a class="social-link" href="#">pi</a><a class="social-link" href="#">yt</a></div>
+    </div>
+    <div class="footer-col"><h4>Coleções</h4><ul><li><a href="#">Sala de Estar</a></li><li><a href="#">Quarto</a></li><li><a href="#">Escritório</a></li><li><a href="#">Sala de Jantar</a></li><li><a href="#">Varanda</a></li></ul></div>
+    <div class="footer-col"><h4>Empresa</h4><ul><li><a href="#">Nossa história</a></li><li><a href="#">Showroom</a></li><li><a href="#">Parceiros</a></li><li><a href="#">Trabalhe conosco</a></li></ul></div>
+    <div class="footer-col"><h4>Suporte</h4><ul><li><a href="#">Rastrear pedido</a></li><li><a href="#">Política de troca</a></li><li><a href="#">Garantia</a></li><li><a href="#">Fale conosco</a></li></ul></div>
+  </div>
+  <div class="footer-bottom">
+    <p>© 2025 Gama Móveis — CNPJ 00.000.000/0001-00 — Natal/RN</p>
+    <div class="footer-payments"><span class="pay-tag">PIX</span><span class="pay-tag">Visa</span><span class="pay-tag">Master</span><span class="pay-tag">Boleto</span></div>
+  </div>
+</footer>
+
+<script>
+/* ================================================================
+   ⚙️  CONFIGURAÇÃO DA PLANILHA — EDITE SOMENTE ESTA LINHA
+   ================================================================
+   
+   PASSO A PASSO:
+   1. Abra sua planilha no Google Sheets
+   2. Menu: Arquivo → Compartilhar → Publicar na Web
+   3. Selecione: "Planilha inteira" + formato "CSV"
+   4. Clique em "Publicar" e copie o link gerado
+   5. Cole o link abaixo substituindo o texto entre aspas
+   
+   O link ficará parecido com:
+   https://docs.google.com/spreadsheets/d/XXXXXXX/pub?output=csv
+   ================================================================ */
+
+const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ4jSbzNzyGiFwZdU_r1uEOXNGocf1exR8kFR5TKuxYLm0UQiSETT6aZ34l9eolsPqR94VDeoMmrqid/pubhtml";
+
+/* ================================================================
+   MODELO DA PLANILHA — deixe a 1ª linha com esses cabeçalhos:
+   
+   | id | nome | categoria | material | preco | preco_antigo | badge | foto | destaque | foto_hero | foto_lifestyle | foto_colecao | colecao_nome | colecao_cat |
+   
+   CAMPOS:
+   - id            : número único (1, 2, 3...)
+   - nome          : nome do produto
+   - categoria     : Sala / Quarto / Escritório / etc.
+   - material      : ex: Couro natural, MDF lacado
+   - preco         : número sem R$ (ex: 4890)
+   - preco_antigo  : número sem R$ — deixe vazio se não houver
+   - badge         : "new" (Novo), "sale" (Oferta) ou vazio
+   - foto          : link direto da imagem do produto
+   - destaque      : "sim" para aparecer no card flutuante do hero
+   - foto_hero     : link da imagem para o painel hero (posição 1–4, use coluna separada)
+   - foto_lifestyle: link da imagem para a seção filosofia (posição 1–4)
+   - foto_colecao  : link da imagem da coleção
+   - colecao_nome  : nome da coleção (ex: Coleção Linea)
+   - colecao_cat   : categoria da coleção (ex: Sala de Estar)
+   
+   COMO USAR IMAGENS:
+   - Faça upload da foto no Google Drive
+   - Clique com botão direito → Compartilhar → "Qualquer pessoa com o link"
+   - Copie o link e cole na célula da planilha
+   - O site converte automaticamente para exibir a imagem
+   ================================================================ */
+
+/* Dados de exemplo (usados enquanto a planilha não estiver configurada) */
+const EXEMPLOS = [
+  {id:1,nome:'Sofá Linea 3L',categoria:'Sala',material:'Couro natural',preco:4890,preco_antigo:5600,badge:'sale',foto:'',destaque:'sim',foto_hero:'',foto_lifestyle:'',foto_colecao:'',colecao_nome:'Coleção Linea',colecao_cat:'Sala de Estar'},
+  {id:2,nome:'Poltrona Arc',categoria:'Sala',material:'Veludo cinza',preco:1290,preco_antigo:'',badge:'new',foto:'',destaque:'',foto_hero:'',foto_lifestyle:'',foto_colecao:'',colecao_nome:'Coleção Work',colecao_cat:'Escritório'},
+  {id:3,nome:'Cama Nox Queen',categoria:'Quarto',material:'MDF lacado',preco:3200,preco_antigo:3800,badge:'sale',foto:'',destaque:'',foto_hero:'',foto_lifestyle:'',foto_colecao:'',colecao_nome:'Coleção Nox',colecao_cat:'Quarto'},
+  {id:4,nome:'Mesa de Centro',categoria:'Sala',material:'Madeira maciça',preco:890,preco_antigo:'',badge:'',foto:'',destaque:'',foto_hero:'',foto_lifestyle:'',foto_colecao:'',colecao_nome:'Coleção Mesa',colecao_cat:'Sala de Jantar'},
+  {id:5,nome:'Escrivaninha Work',categoria:'Escritório',material:'Freijó natural',preco:1650,preco_antigo:'',badge:'new',foto:'',destaque:'',foto_hero:'',foto_lifestyle:'',foto_colecao:'',colecao_nome:'Coleção Open',colecao_cat:'Varanda'},
+  {id:6,nome:'Guarda-Roupa 6P',categoria:'Quarto',material:'MDF amadeirado',preco:5400,preco_antigo:6200,badge:'sale',foto:'',destaque:''},
+  {id:7,nome:'Cadeira Loft',categoria:'Escritório',material:'Couro ecológico',preco:780,preco_antigo:'',badge:'',foto:'',destaque:''},
+  {id:8,nome:'Mesa de Jantar 8L',categoria:'Sala',material:'Madeira de lei',preco:3900,preco_antigo:'',badge:'new',foto:'',destaque:''},
+];
+const EMOJI_CAT={'Sala':'🛋️','Quarto':'🛏️','Escritório':'💺','default':'🪑'};
+const COLL_FALLBACKS=['cf-1','cf-2','cf-3','cf-4','cf-5'];
+const COLL_EMOJIS=['🛋️','🪑','🛏️','🪞','🪴'];
+const HERO_EMOJIS=['🛋️','🪑','🛏️','🪞'];
+const LIFE_EMOJIS=['🪵','🧵','🔨','✨'];
+
+let products=[],cart=[];
+
+function fmt(v){const n=parseFloat(v);if(isNaN(n)||!n)return'';return'R$ '+n.toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.');}
+
+/* converte link do Google Drive para link direto de imagem */
+function fixGDriveUrl(url){
+  if(!url||typeof url!=='string')return'';
+  url=url.trim();
+  const m=url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+  if(m)return`https://drive.google.com/uc?export=view&id=${m[1]}`;
+  return url;
+}
+
+function imgOrEmoji(url,emoji,style='width:100%;height:100%;object-fit:cover;display:block'){
+  const src=fixGDriveUrl(url);
+  if(src){
+    return`<img src="${src}" style="${style}" onerror="this.outerHTML='<div style=\\'display:flex;align-items:center;justify-content:center;font-size:4rem;width:100%;height:100%\\'>${emoji}</div>'">`;
+  }
+  return`<div style="display:flex;align-items:center;justify-content:center;font-size:4rem;width:100%;height:100%">${emoji}</div>`;
+}
+
+/* ── HERO CELLS ── */
+function fillHeroCells(rows){
+  for(let i=0;i<4;i++){
+    const cell=document.getElementById('hrb'+(i+1));
+    const r=rows[i]||{};
+    const url=r.foto_hero||r['foto hero']||'';
+    cell.innerHTML=imgOrEmoji(url,HERO_EMOJIS[i],'width:100%;height:100%;object-fit:cover;display:block;transition:transform .6s');
+  }
+}
+
+/* ── LIFESTYLE CELLS ── */
+function fillLifestyleCells(rows){
+  for(let i=0;i<4;i++){
+    const cell=document.getElementById('lrc'+(i+1));
+    const r=rows[i]||{};
+    const url=r.foto_lifestyle||r['foto lifestyle']||'';
+    cell.innerHTML=imgOrEmoji(url,LIFE_EMOJIS[i],'width:100%;height:100%;object-fit:cover;display:block;transition:transform .5s');
+  }
+}
+
+/* ── COLLECTIONS GRID ── */
+function renderCollections(rows){
+  // Pega coleções únicas dos produtos
+  const seen=new Set();
+  const colls=rows.filter(r=>{
+    const k=(r.colecao_nome||r['colecao nome']||'');
+    if(!k||seen.has(k))return false;
+    seen.add(k);return true;
+  }).slice(0,5);
+
+  // Se não tiver dados de coleção, usa padrão
+  if(!colls.length){
+    document.getElementById('collGrid').innerHTML=[
+      {nome:'Coleção Linea',cat:'Sala de Estar',emoji:'🛋️',cls:'cf-1'},
+      {nome:'Coleção Work',cat:'Escritório',emoji:'🪑',cls:'cf-2'},
+      {nome:'Coleção Nox',cat:'Quarto',emoji:'🛏️',cls:'cf-3'},
+      {nome:'Coleção Mesa',cat:'Sala de Jantar',emoji:'🪞',cls:'cf-4'},
+      {nome:'Coleção Open',cat:'Varanda',emoji:'🪴',cls:'cf-5'},
+    ].map((c,i)=>`
+      <div class="coll-card">
+        <div class="coll-bg"><div class="coll-fallback ${c.cls}">${c.emoji}</div></div>
+        <div class="coll-overlay"></div>
+        <div class="coll-info"><div class="coll-cat">${c.cat}</div><div class="coll-name">${c.nome}</div></div>
+      </div>`).join('');
+    return;
+  }
+
+  document.getElementById('collGrid').innerHTML=colls.map((r,i)=>{
+    const nome=r.colecao_nome||r['colecao nome']||'Coleção';
+    const cat=r.colecao_cat||r['colecao cat']||r.categoria||'';
+    const url=fixGDriveUrl(r.foto_colecao||r['foto colecao']||'');
+    const imgHtml=url
+      ?`<img src="${url}" style="width:100%;height:100%;object-fit:cover;display:block;transition:transform .6s" onerror="this.outerHTML='<div class=\\"coll-fallback ${COLL_FALLBACKS[i]}\\">${COLL_EMOJIS[i]}</div>'">`
+      :`<div class="coll-fallback ${COLL_FALLBACKS[i]}">${COLL_EMOJIS[i]}</div>`;
+    return`<div class="coll-card">
+      <div class="coll-bg">${imgHtml}</div>
+      <div class="coll-overlay"></div>
+      <div class="coll-info"><div class="coll-cat">${cat}</div><div class="coll-name">${nome}</div></div>
+    </div>`;
+  }).join('');
+}
+
+/* ── PRODUCTS ── */
+function renderProds(list){
+  if(!list||!list.length){
+    document.getElementById('prodGrid').innerHTML=`<div class="error-state"><strong>Nenhum produto encontrado</strong><p>Verifique a planilha ou os filtros.</p></div>`;
+    return;
+  }
+  document.getElementById('prodGrid').innerHTML=list.map((p,idx)=>{
+    const id=p.id||idx+1;
+    const nome=p.nome||p.name||'Produto';
+    const cat=p.categoria||p.cat||'';
+    const mat=p.material||p.mat||'';
+    const preco=parseFloat(p.preco||p.price)||0;
+    const precoAnt=parseFloat(p.preco_antigo||p.old)||0;
+    const badge=p.badge||'';
+    const url=fixGDriveUrl(p.foto||'');
+    const emoji=EMOJI_CAT[cat]||EMOJI_CAT.default;
+    const imgHtml=url
+      ?`<img src="${url}" alt="${nome}" style="width:100%;height:100%;object-fit:cover;display:block;transition:transform .5s" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="prod-img-fallback" style="display:none">${emoji}</div>`
+      :`<div class="prod-img-fallback">${emoji}</div>`;
+    return`<div class="prod-card fade-in">
+      <div class="prod-img">
+        ${badge?`<span class="prod-badge badge-${badge}">${badge==='new'?'Novo':'Oferta'}</span>`:''}
+        ${imgHtml}
+        <div class="prod-actions">
+          <button class="prod-action-btn">♡</button>
+          <button class="prod-action-btn">⊙</button>
+        </div>
+      </div>
+      <div class="prod-info">
+        <div class="prod-cat-label">${cat}</div>
+        <div class="prod-name">${nome}</div>
+        <div style="font-size:0.72rem;color:var(--gray);letter-spacing:1px;margin-bottom:1rem">${mat}</div>
+        <div class="prod-footer">
+          <div>
+            ${precoAnt?`<div class="prod-price-old">${fmt(precoAnt)}</div>`:''}
+            <div class="prod-price-val">${fmt(preco)}</div>
+          </div>
+          <button class="btn-add-cart" id="padd-${id}" onclick="addCart(${id})">+ Carrinho</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  buildFilters(list);
+  observeFade();
+}
+
+function buildFilters(list){
+  const cats=[...new Set(list.map(p=>p.categoria||p.cat||'').filter(Boolean))];
+  document.getElementById('filterTabs').innerHTML=
+    `<button class="filter-tab active" onclick="filterProd(this,'Todos')">Todos</button>`
+    +cats.map(c=>`<button class="filter-tab" onclick="filterProd(this,'${c}')">${c}</button>`).join('');
+}
+
+function filterProd(btn,cat){
+  document.querySelectorAll('.filter-tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  renderProds(cat==='Todos'?products:products.filter(p=>(p.categoria||p.cat||'')==cat));
+}
+
+/* ── CART ── */
+function addCart(id){
+  const p=products.find(x=>(parseInt(x.id)||products.indexOf(x)+1)==id);
+  if(!p)return;
+  const ex=cart.find(x=>x._id==id);
+  if(ex)ex.qty++;else cart.push({...p,_id:id,qty:1});
+  updateCart();
+  const btn=document.getElementById('padd-'+id);
+  if(btn){const o=btn.textContent;btn.textContent='✓ Adicionado';btn.classList.add('added');setTimeout(()=>{btn.textContent=o;btn.classList.remove('added')},1400)}
+  showToast((p.nome||'Produto')+' adicionado');
+}
+function updateCart(){
+  const total=cart.reduce((s,i)=>s+(parseFloat(i.preco||0))*i.qty,0);
+  document.getElementById('cartDot').textContent=cart.reduce((s,i)=>s+i.qty,0);
+  document.getElementById('cartTotal').textContent=fmt(total)||'R$ 0,00';
+  const body=document.getElementById('cartBody');
+  if(!cart.length){body.innerHTML='<div class="cart-empty-g"><div class="empty-icon">🛋️</div><p>Seu carrinho está vazio</p></div>';return}
+  body.innerHTML=cart.map(i=>{
+    const url=fixGDriveUrl(i.foto||'');
+    const emoji=EMOJI_CAT[i.categoria||i.cat]||EMOJI_CAT.default;
+    const thumb=url?`<img src="${url}" style="width:100%;height:100%;object-fit:cover">`:`<span style="font-size:1.8rem">${emoji}</span>`;
+    return`<div class="cart-item-g">
+      <div class="cig-icon">${thumb}</div>
+      <div class="cig-details">
+        <strong>${i.nome||'Produto'}</strong><span>${i.material||''}</span>
+        <div class="cig-actions">
+          <button class="qty-btn" onclick="changeQty(${i._id},-1)">−</button>
+          <span class="qty-val">${i.qty}</span>
+          <button class="qty-btn" onclick="changeQty(${i._id},1)">+</button>
+        </div>
+        <button class="cig-remove" onclick="removeItem(${i._id})">Remover</button>
+      </div>
+      <div class="cig-price">${fmt(parseFloat(i.preco||0)*i.qty)}</div>
+    </div>`;
+  }).join('');
+}
+function changeQty(id,d){const i=cart.find(x=>x._id==id);if(!i)return;i.qty+=d;if(i.qty<1)cart=cart.filter(x=>x._id!=id);updateCart()}
+function removeItem(id){cart=cart.filter(x=>x._id!=id);updateCart()}
+function openCart(){document.getElementById('cartOverlay').classList.add('open')}
+function closeCart(){document.getElementById('cartOverlay').classList.remove('open')}
+function closeCartOuter(e){if(e.target===document.getElementById('cartOverlay'))closeCart()}
+function finalize(){if(!cart.length){showToast('Carrinho vazio');return}alert('🎉 Pedido realizado!\nNossa equipe entrará em contato em breve.');cart=[];updateCart();closeCart()}
+function openMobileNav(){document.getElementById('mobileNav').classList.add('open')}
+function closeMobileNav(){document.getElementById('mobileNav').classList.remove('open')}
+function showToast(msg){const t=document.getElementById('gamaToast');t.textContent='✓  '+msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500)}
+function nlSubscribe(){const el=document.getElementById('nlEmail');if(!el.value||!el.value.includes('@')){showToast('Insira um e-mail válido');return}showToast('Cadastro realizado!');el.value=''}
+function observeFade(){const obs=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');obs.unobserve(e.target)}}),{threshold:0.1});document.querySelectorAll('.fade-in:not(.visible)').forEach(i=>obs.observe(i))}
+
+/* ── CURSOR ── */
+const cur=document.getElementById('cursor'),ring=document.getElementById('cursorRing');
+let mx=0,my=0,rx=0,ry=0;
+document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;cur.style.left=mx+'px';cur.style.top=my+'px'});
+(function a(){rx+=(mx-rx)*.12;ry+=(my-ry)*.12;ring.style.left=rx+'px';ring.style.top=ry+'px';requestAnimationFrame(a)})();
+document.querySelectorAll('a,button,.prod-card,.coll-card').forEach(el=>{
+  el.addEventListener('mouseenter',()=>{cur.style.width='14px';cur.style.height='14px';ring.style.width='52px';ring.style.height='52px'});
+  el.addEventListener('mouseleave',()=>{cur.style.width='8px';cur.style.height='8px';ring.style.width='36px';ring.style.height='36px'});
+});
+window.addEventListener('scroll',()=>document.getElementById('mainNav').classList.toggle('scrolled',window.scrollY>60));
+setTimeout(()=>document.getElementById('loader').classList.add('hide'),1800);
+
+/* ── PARSE CSV ── */
+function parseCSV(text){
+  const lines=text.trim().split(/\r?\n/);
+  if(!lines.length)return[];
+  const headers=lines[0].split(',').map(h=>h.trim().replace(/^"|"$/g,'').toLowerCase().replace(/\s+/g,'_'));
+  return lines.slice(1).filter(l=>l.trim()).map(line=>{
+    const vals=[];let c='',q=false;
+    for(const ch of line){if(ch==='"'){q=!q}else if(ch===','&&!q){vals.push(c.trim());c=''}else{c+=ch}}
+    vals.push(c.trim());
+    const o={};headers.forEach((h,i)=>o[h]=(vals[i]||'').replace(/^"|"$/g,''));
+    return o;
+  });
+}
+
+/* ── LOAD SHEET ── */
+async function loadSheet(){
+  const configured=SHEET_URL&&!SHEET_URL.includes('COLE_O_LINK');
+  if(!configured){
+    console.info('ℹ️ Planilha não configurada — mostrando dados de exemplo');
+    products=EXEMPLOS;
+    renderProds(products);
+    renderCollections(EXEMPLOS);
+    fillHeroCells(EXEMPLOS);
+    fillLifestyleCells(EXEMPLOS);
+    const dest=EXEMPLOS.find(p=>p.destaque==='sim')||EXEMPLOS[0];
+    document.getElementById('heroCardName').textContent=dest.nome||'';
+    document.getElementById('heroCardPrice').textContent=fmt(dest.preco)||'';
+    document.getElementById('heroCardMat').textContent=dest.material||'';
+    return;
+  }
+  try{
+    const res=await fetch(SHEET_URL);
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    const csv=await res.text();
+    const rows=parseCSV(csv);
+    products=rows.map((r,i)=>({...r,id:r.id||i+1,preco:parseFloat(r.preco)||0,preco_antigo:parseFloat(r.preco_antigo)||0}));
+    renderProds(products);
+    renderCollections(products);
+    fillHeroCells(products);
+    fillLifestyleCells(products);
+    const dest=products.find(p=>p.destaque&&p.destaque.toLowerCase()==='sim')||products[0];
+    if(dest){
+      document.getElementById('heroCardName').textContent=dest.nome||'';
+      document.getElementById('heroCardPrice').textContent=fmt(dest.preco)||'';
+      document.getElementById('heroCardMat').textContent=dest.material||'';
+    }
+  }catch(err){
+    console.warn('Erro planilha:',err);
+    document.getElementById('prodGrid').innerHTML=`<div class="error-state"><strong>Não foi possível carregar a planilha</strong><p>Verifique se o link está correto e se está publicado publicamente no Google Sheets.<br><small>Arquivo → Publicar na Web → CSV → Copiar link</small></p></div>`;
+    products=EXEMPLOS;renderProds(products);renderCollections(EXEMPLOS);fillHeroCells([]);fillLifestyleCells([]);
+  }
+}
+
+loadSheet();
+observeFade();
+</script>
+</body>
+</html>
