@@ -16,8 +16,8 @@ const GETNET_SELLER_ID     = process.env.GETNET_SELLER_ID     || "192ec5f4-31af-
 const GETNET_SANDBOX       = process.env.GETNET_SANDBOX !== "false";
 
 const GETNET_URL = GETNET_SANDBOX
-  ? "https://api-homologacao.getnet.com.br"
-  : "https://api.getnet.com.br";
+  ? "https://api-sbx.globalgetnet.com"
+  : "https://api.globalgetnet.com";
 
 // Supabase — salva pedidos no painel admin
 const SUPABASE_URL = process.env.SUPABASE_URL || "";
@@ -25,16 +25,13 @@ const SUPABASE_KEY = process.env.SUPABASE_KEY || "";
 
 /* ── Gera token de acesso Getnet ── */
 async function getToken() {
-  const res = await fetch(`${GETNET_URL}/auth/oauth/v2/token`, {
+  const res = await fetch(`${GETNET_URL}/authentication/oauth2/access_token`, {
     method: "POST",
     headers: {
       "Authorization": `Basic ${Buffer.from(`${GETNET_CLIENT_ID}:${GETNET_CLIENT_SECRET}`).toString("base64")}`,
       "Content-Type": "application/x-www-form-urlencoded",
     },
-    body: new URLSearchParams({
-      grant_type: "client_credentials",
-      scope: "oob",
-    }).toString(),
+    body: "grant_type=client_credentials",
   });
 
   const data = await res.json();
@@ -44,12 +41,12 @@ async function getToken() {
 
 /* ── Tokeniza o número do cartão ── */
 async function tokenizeCard(token, cardNumber, customerId) {
-  const res = await fetch(`${GETNET_URL}/v1/tokens/card`, {
+  const res = await fetch(`${GETNET_URL}/dpm/payments-gwproxy/v2/tokens/card`, {
     method: "POST",
     headers: {
       "Authorization": `Bearer ${token}`,
       "Content-Type": "application/json",
-      "seller_id": GETNET_SELLER_ID,
+      "x-seller-id": GETNET_SELLER_ID,
     },
     body: JSON.stringify({
       card_number: cardNumber.replace(/\s/g, ""),
@@ -132,12 +129,12 @@ export default async function handler(req, res) {
         },
       };
 
-      const pixRes = await fetch(`${GETNET_URL}/v1/payments/qrcode/pix`, {
+      const pixRes = await fetch(`${GETNET_URL}/dpm/payments-gwproxy/v2/payments`, {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${accessToken}`,
           "Content-Type": "application/json",
-          "seller_id": GETNET_SELLER_ID,
+          "x-seller-id": GETNET_SELLER_ID,
         },
         body: JSON.stringify(pixBody),
       });
@@ -173,72 +170,46 @@ export default async function handler(req, res) {
     // ── CARTÃO CRÉDITO / DÉBITO ───────────────────────────────────
     // aceita MM/AA ou MM/AAAA — sempre envia 2 dígitos para a Getnet
     const [expMonth, expYearRaw] = (cardExpiry || "").split("/");
-    const expYear = (expYearRaw || "").slice(-2); // garante 2 dígitos
+    const expYear = (expYearRaw || "").slice(-2);
 
     // tokeniza o cartão (obrigatório na Getnet)
     const numberToken = await tokenizeCard(accessToken, cardNumber, customerId);
 
+    const paymentMethod = kind === "debit" ? "DEBIT" : "CREDIT";
     const cardBody = {
-      seller_id:  GETNET_SELLER_ID,
-      amount:     amountNum,
-      currency:   "BRL",
-      order: {
-        order_id:     orderId,
-        sales_tax:    0,
-        product_type: "physical_goods",
-      },
-      customer: {
-        customer_id:     customerId,
-        first_name:      customerName.split(" ")[0],
-        last_name:       customerName.split(" ").slice(1).join(" ") || ".",
-        document_type:   "CPF",
-        document_number: customerCpf.replace(/\D/g, ""),
-        email:           customerEmail,
-        phone_number:    customerPhone.replace(/\D/g, ""),
-        billing_address: {
-          street:      "Não informado",
-          number:      "0",
-          district:    "Não informado",
-          city:        "Natal",
-          state:       "RN",
-          country:     "Brasil",
-          postal_code: "59000000",
-        },
-      },
-      device: {
-        device_id:  `device-${Date.now()}`,
-        ip_address: req.headers["x-forwarded-for"] || "127.0.0.1",
-      },
-      [kind === "debit" ? "debit" : "credit"]: {
-        delayed:             false,
-        authenticated:       false,
-        pre_authorization:   false,
-        save_card_data:      false,
-        transaction_type:    "FULL",
-        number_installments: Number(installments) || 1,
-        soft_descriptor:     "GAMA MOVEIS",
-        dynamic_mcc:         5712, // código MCC para Móveis
-        card: {
-          number_token:      numberToken,
-          cardholder_name:   cardHolder,
-          security_code:     cardCvv,
-          brand:             detectBrand(cardNumber),
-          expiration_month:  expMonth,
-          expiration_year:   expYear, // já são 2 dígitos
+      idempotency_key: `${orderId}-${Date.now()}`,
+      order_id:        orderId,
+      data: {
+        amount:      amountNum,
+        currency:    "BRL",
+        customer_id: customerId,
+        payment: {
+          payment_method:      `${paymentMethod}_AUTHORIZATION`,
+          save_card_data:      false,
+          transaction_type:    "FULL",
+          number_installments: Number(installments) || 1,
+          soft_descriptor:     "GAMA MOVEIS",
+          dynamic_mcc:         5712,
+          card: {
+            number_token:     numberToken,
+            cardholder_name:  cardHolder,
+            security_code:    cardCvv,
+            brand:            detectBrand(cardNumber),
+            expiration_month: expMonth,
+            expiration_year:  expYear,
+          },
         },
       },
     };
 
-    const endpoint = kind === "debit"
-      ? `${GETNET_URL}/v1/payments/debit`
-      : `${GETNET_URL}/v1/payments/credit`;
+    const endpoint = `${GETNET_URL}/dpm/payments-gwproxy/v2/payments`;
 
     const cardRes = await fetch(endpoint, {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${accessToken}`,
         "Content-Type": "application/json",
-        "seller_id": GETNET_SELLER_ID,
+        "x-seller-id": GETNET_SELLER_ID,
       },
       body: JSON.stringify(cardBody),
     });
@@ -246,16 +217,14 @@ export default async function handler(req, res) {
     const cardData = await cardRes.json();
     if (!cardRes.ok) throw new Error(`Erro cartão: ${JSON.stringify(cardData)}`);
 
-    const status     = cardData.status === "APPROVED" ? "approved" : "declined";
-    const paymentId  = cardData.payment_id || orderId;
-    const authCode   = kind === "debit"
-      ? cardData.debit?.authorization_code
-      : cardData.credit?.authorization_code;
+    const approved  = cardData.status === "AUTHORIZED" || cardData.status === "APPROVED";
+    const paymentId = cardData.payment_id || orderId;
+    const authCode  = cardData.authorization_code || "";
 
     await saveOrder({
       tid:            paymentId,
       reference:      orderId,
-      status,
+      status:         approved ? "approved" : "declined",
       kind,
       amount:         amountNum,
       installments:   Number(installments) || 1,
@@ -263,16 +232,16 @@ export default async function handler(req, res) {
       customer_email: customerEmail,
       customer_cpf:   customerCpf.replace(/\D/g, ""),
       items:          items || "",
-      auth_code:      authCode || "",
+      auth_code:      authCode,
       return_code:    cardData.status || "",
     });
 
     return res.status(200).json({
       kind,
-      payment_id:        paymentId,
-      status,
+      payment_id:         paymentId,
+      status:             approved ? "approved" : "declined",
       authorization_code: authCode,
-      message:           cardData.status,
+      message:            cardData.status,
     });
 
   } catch (err) {
