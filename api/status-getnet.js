@@ -10,21 +10,23 @@ const GETNET_SELLER_ID     = process.env.GETNET_SELLER_ID     || "192ec5f4-31af-
 const GETNET_SANDBOX       = process.env.GETNET_SANDBOX !== "false";
 
 const GETNET_URL = GETNET_SANDBOX
-  ? "https://api-sandbox.getnet.com.br"
+  ? "https://api-homologacao.getnet.com.br"
   : "https://api.getnet.com.br";
 
 async function getToken() {
-  const credentials = Buffer.from(`${GETNET_CLIENT_ID}:${GETNET_CLIENT_SECRET}`).toString("base64");
   const res = await fetch(`${GETNET_URL}/auth/oauth/v2/token`, {
     method: "POST",
     headers: {
-      "Authorization": `Basic ${credentials}`,
+      "Authorization": `Basic ${Buffer.from(`${GETNET_CLIENT_ID}:${GETNET_CLIENT_SECRET}`).toString("base64")}`,
       "Content-Type": "application/x-www-form-urlencoded",
     },
-    body: "scope=oob&grant_type=client_credentials",
+    body: new URLSearchParams({
+      grant_type: "client_credentials",
+      scope: "oob",
+    }).toString(),
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(`Token error: ${data.error_description}`);
+  if (!res.ok) throw new Error(`Token error: ${JSON.stringify(data)}`);
   return data.access_token;
 }
 
