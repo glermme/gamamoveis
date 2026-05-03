@@ -16,7 +16,7 @@ const GETNET_SELLER_ID     = process.env.GETNET_SELLER_ID     || "192ec5f4-31af-
 const GETNET_SANDBOX       = process.env.GETNET_SANDBOX !== "false";
 
 const GETNET_URL = GETNET_SANDBOX
-  ? "https://api-sandbox.getnet.com.br"
+  ? "https://api-homologacao.getnet.com.br"
   : "https://api.getnet.com.br";
 
 // Supabase — salva pedidos no painel admin
@@ -25,19 +25,20 @@ const SUPABASE_KEY = process.env.SUPABASE_KEY || "";
 
 /* ── Gera token de acesso Getnet ── */
 async function getToken() {
-  const credentials = Buffer.from(`${GETNET_CLIENT_ID}:${GETNET_CLIENT_SECRET}`).toString("base64");
-
   const res = await fetch(`${GETNET_URL}/auth/oauth/v2/token`, {
     method: "POST",
     headers: {
-      "Authorization": `Basic ${credentials}`,
+      "Authorization": `Basic ${Buffer.from(`${GETNET_CLIENT_ID}:${GETNET_CLIENT_SECRET}`).toString("base64")}`,
       "Content-Type": "application/x-www-form-urlencoded",
     },
-    body: "scope=oob&grant_type=client_credentials",
+    body: new URLSearchParams({
+      grant_type: "client_credentials",
+      scope: "oob",
+    }).toString(),
   });
 
   const data = await res.json();
-  if (!res.ok) throw new Error(`Erro ao obter token: ${data.error_description || res.status}`);
+  if (!res.ok) throw new Error(`Erro ao obter token: ${JSON.stringify(data)}`);
   return data.access_token;
 }
 
@@ -170,7 +171,9 @@ export default async function handler(req, res) {
     }
 
     // ── CARTÃO CRÉDITO / DÉBITO ───────────────────────────────────
-    const [expMonth, expYear] = (cardExpiry || "").split("/");
+    // aceita MM/AA ou MM/AAAA — sempre envia 2 dígitos para a Getnet
+    const [expMonth, expYearRaw] = (cardExpiry || "").split("/");
+    const expYear = (expYearRaw || "").slice(-2); // garante 2 dígitos
 
     // tokeniza o cartão (obrigatório na Getnet)
     const numberToken = await tokenizeCard(accessToken, cardNumber, customerId);
@@ -221,7 +224,7 @@ export default async function handler(req, res) {
           security_code:     cardCvv,
           brand:             detectBrand(cardNumber),
           expiration_month:  expMonth,
-          expiration_year:   expYear.slice(-2), // Getnet usa 2 dígitos
+          expiration_year:   expYear, // já são 2 dígitos
         },
       },
     };
