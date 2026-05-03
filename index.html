@@ -437,21 +437,16 @@ footer{background:var(--charcoal);padding:4rem 5% 2rem}
 
 <script>
 /* ================================================================
-   ⚙️  CONFIGURAÇÃO DA PLANILHA — EDITE SOMENTE ESTA LINHA
+   ⚙️  CONFIGURAÇÃO DA PLANILHA
    ================================================================
-   
-   PASSO A PASSO:
-   1. Abra sua planilha no Google Sheets
-   2. Menu: Arquivo → Compartilhar → Publicar na Web
-   3. Selecione: "Planilha inteira" + formato "CSV"
-   4. Clique em "Publicar" e copie o link gerado
-   5. Cole o link abaixo substituindo o texto entre aspas
-   
-   O link ficará parecido com:
-   https://docs.google.com/spreadsheets/d/XXXXXXX/pub?output=csv
-   ================================================================ */
+   O link da planilha agora fica nas variáveis de ambiente do Vercel.
+   Não precisa editar este arquivo!
 
-const SHEET_URL = "https://docs.google.com/spreadsheets/d/18UKmYHUE2Or1dRKSs0P6HPSzGtFLO84IZzA4B3BPeNg/edit?usp=sharing";
+   No Vercel → Settings → Environment Variables, adicione:
+     SHEET_URL_GAMA = https://docs.google.com/spreadsheets/d/.../pub?output=csv
+
+   Isso também resolve o problema de cache — sempre dados frescos.
+   ================================================================ */
 
 /* ================================================================
    MODELO DA PLANILHA — deixe a 1ª linha com esses cabeçalhos:
@@ -500,14 +495,43 @@ const LIFE_EMOJIS=['🪵','🧵','🔨','✨'];
 
 let products=[],cart=[];
 
-function fmt(v){const n=parseFloat(v);if(isNaN(n)||!n)return'';return'R$ '+n.toFixed(2).replace('.',',').replace(/\B(?=(\d{3})+(?!\d))/g,'.');}
+function fmt(v){
+  if(v===null||v===undefined||v==='')return'';
+  let s=String(v).trim().replace(/R\$\s*/,'');
+  if(/^\d{1,3}(\.\d{3})+(,\d{0,2})?$/.test(s)){s=s.replace(/\./g,'').replace(',','.');}
+  else{s=s.replace(',','.');}
+  const n=parseFloat(s);
+  if(isNaN(n))return'';
+  return n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
 
-/* converte link do Google Drive para link direto de imagem */
+function parsePreco(v){
+  if(!v&&v!==0)return 0;
+  let s=String(v).trim().replace(/R\$\s*/,'');
+  if(/^\d{1,3}(\.\d{3})+(,\d{0,2})?$/.test(s)){s=s.replace(/\./g,'').replace(',','.');}
+  else{s=s.replace(',','.');}
+  return parseFloat(s)||0;
+}
+
+/* converte QUALQUER link do Google Drive para link direto de imagem
+   Aceita todos esses formatos — cole qualquer um da planilha:
+   - https://drive.google.com/file/d/ID/view?usp=sharing
+   - https://drive.google.com/open?id=ID
+   - https://drive.google.com/uc?id=ID
+   - https://drive.google.com/uc?export=view&id=ID
+   - https://docs.google.com/uc?id=ID
+*/
 function fixGDriveUrl(url){
   if(!url||typeof url!=='string')return'';
   url=url.trim();
-  const m=url.match(/\/d\/([a-zA-Z0-9_-]+)/);
-  if(m)return`https://drive.google.com/uc?export=view&id=${m[1]}`;
+  if(!url||url==='-'||url==='')return'';
+  // extrai o ID de qualquer formato do Drive
+  let id='';
+  const m1=url.match(/\/d\/([a-zA-Z0-9_-]{10,})/);
+  const m2=url.match(/[?&]id=([a-zA-Z0-9_-]{10,})/);
+  if(m1)id=m1[1];
+  else if(m2)id=m2[1];
+  if(id)return`https://drive.google.com/thumbnail?id=${id}&sz=w800`;
   return url;
 }
 
@@ -592,8 +616,8 @@ function renderProds(list){
     const nome=p.nome||p.name||'Produto';
     const cat=p.categoria||p.cat||'';
     const mat=p.material||p.mat||'';
-    const preco=parseFloat(p.preco||p.price)||0;
-    const precoAnt=parseFloat(p.preco_antigo||p.old)||0;
+    const preco=parsePreco(p.preco||p.price);
+    const precoAnt=parsePreco(p.preco_antigo||p.old);
     const badge=p.badge||'';
     const url=fixGDriveUrl(p.foto||'');
     const emoji=EMOJI_CAT[cat]||EMOJI_CAT.default;
@@ -681,7 +705,7 @@ function removeItem(id){cart=cart.filter(x=>x._id!=id);updateCart()}
 function openCart(){document.getElementById('cartOverlay').classList.add('open')}
 function closeCart(){document.getElementById('cartOverlay').classList.remove('open')}
 function closeCartOuter(e){if(e.target===document.getElementById('cartOverlay'))closeCart()}
-function finalize(){if(!cart.length){showToast('Carrinho vazio');return}alert('🎉 Pedido realizado!\nNossa equipe entrará em contato em breve.');cart=[];updateCart();closeCart()}
+function finalize(){if(!cart.length){showToast('Carrinho vazio');return}closeCart();openCheckoutGama()}
 function openMobileNav(){document.getElementById('mobileNav').classList.add('open')}
 function closeMobileNav(){document.getElementById('mobileNav').classList.remove('open')}
 function showToast(msg){const t=document.getElementById('gamaToast');t.textContent='✓  '+msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500)}
@@ -716,26 +740,16 @@ function parseCSV(text){
 
 /* ── LOAD SHEET ── */
 async function loadSheet(){
-  const configured=SHEET_URL&&!SHEET_URL.includes('COLE_O_LINK');
-  if(!configured){
-    console.info('ℹ️ Planilha não configurada — mostrando dados de exemplo');
-    products=EXEMPLOS;
-    renderProds(products);
-    renderCollections(EXEMPLOS);
-    fillHeroCells(EXEMPLOS);
-    fillLifestyleCells(EXEMPLOS);
-    const dest=EXEMPLOS.find(p=>p.destaque==='sim')||EXEMPLOS[0];
-    document.getElementById('heroCardName').textContent=dest.nome||'';
-    document.getElementById('heroCardPrice').textContent=fmt(dest.preco)||'';
-    document.getElementById('heroCardMat').textContent=dest.material||'';
-    return;
-  }
   try{
-    const res=await fetch(SHEET_URL);
+    // Proxy Vercel — sempre fresco, sem cache
+    const res=await fetch('/api/sheet-gama',{cache:'no-store'});
     if(!res.ok)throw new Error('HTTP '+res.status);
-    const csv=await res.text();
-    const rows=parseCSV(csv);
-    products=rows.map((r,i)=>({...r,id:r.id||i+1,preco:parseFloat(r.preco)||0,preco_antigo:parseFloat(r.preco_antigo)||0}));
+    const text=await res.text();
+    if(text.trim().startsWith('{')){
+      const j=JSON.parse(text);throw new Error(j.error||'Erro desconhecido');
+    }
+    const rows=parseCSV(text);
+    products=rows.map((r,i)=>({...r,id:r.id||i+1,preco:parsePreco(r.preco),preco_antigo:parsePreco(r.preco_antigo)}));
     renderProds(products);
     renderCollections(products);
     fillHeroCells(products);
@@ -743,18 +757,319 @@ async function loadSheet(){
     const dest=products.find(p=>p.destaque&&p.destaque.toLowerCase()==='sim')||products[0];
     if(dest){
       document.getElementById('heroCardName').textContent=dest.nome||'';
-      document.getElementById('heroCardPrice').textContent=fmt(dest.preco)||'';
+      document.getElementById('heroCardPrice').textContent=dest.preco?'R$ '+fmt(dest.preco):'';
       document.getElementById('heroCardMat').textContent=dest.material||'';
     }
   }catch(err){
-    console.warn('Erro planilha:',err);
-    document.getElementById('prodGrid').innerHTML=`<div class="error-state"><strong>Não foi possível carregar a planilha</strong><p>Verifique se o link está correto e se está publicado publicamente no Google Sheets.<br><small>Arquivo → Publicar na Web → CSV → Copiar link</small></p></div>`;
-    products=EXEMPLOS;renderProds(products);renderCollections(EXEMPLOS);fillHeroCells([]);fillLifestyleCells([]);
+    console.warn('Erro planilha Gama:',err.message);
+    products=EXEMPLOS;
+    renderProds(products);renderCollections(EXEMPLOS);fillHeroCells([]);fillLifestyleCells([]);
+    const dest=EXEMPLOS.find(p=>p.destaque==='sim')||EXEMPLOS[0];
+    document.getElementById('heroCardName').textContent=dest.nome||'';
+    document.getElementById('heroCardPrice').textContent='R$ '+fmt(dest.preco);
+    document.getElementById('heroCardMat').textContent=dest.material||'';
   }
 }
 
 loadSheet();
 observeFade();
+</script>
+
+<!-- ═══════════════════════════════════════════════════
+     CHECKOUT MODAL — Getnet
+═══════════════════════════════════════════════════ -->
+<style>
+.ck-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:700;align-items:center;justify-content:center;padding:1rem;backdrop-filter:blur(6px)}
+.ck-overlay.open{display:flex}
+.ck-modal{background:var(--white);width:100%;max-width:540px;max-height:92vh;overflow-y:auto;border-radius:4px}
+.ck-head{padding:1.8rem 2rem 1.4rem;border-bottom:1px solid var(--cream-dark);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:var(--white);z-index:1}
+.ck-head h3{font-family:'Cormorant Garamond',serif;font-size:1.4rem;font-weight:300;color:var(--espresso)}
+.ck-close{background:none;border:none;cursor:none;font-size:0.65rem;letter-spacing:2px;text-transform:uppercase;color:var(--gray)}
+.ck-close:hover{color:var(--espresso)}
+.ck-body{padding:1.8rem 2rem}
+.ck-summary{background:var(--cream-dark);padding:1rem 1.2rem;margin-bottom:1.5rem}
+.ck-summary-label{font-size:0.62rem;letter-spacing:2px;text-transform:uppercase;color:var(--gray);margin-bottom:0.5rem}
+.ck-summary-items{font-size:0.85rem;color:var(--charcoal);margin-bottom:0.3rem}
+.ck-summary-total{font-family:'Cormorant Garamond',serif;font-size:1.3rem;font-weight:400;color:var(--gold)}
+.ck-section-title{font-size:0.62rem;letter-spacing:3px;text-transform:uppercase;color:var(--espresso);margin-bottom:0.8rem;padding-bottom:0.4rem;border-bottom:1px solid var(--cream-dark)}
+.ck-section{margin-bottom:1.4rem}
+.ck-grid{display:grid;grid-template-columns:1fr 1fr;gap:0.8rem}
+.ck-grid.full{grid-template-columns:1fr}
+.ck-field{display:flex;flex-direction:column;gap:5px;margin-bottom:0.8rem}
+.ck-field label{font-size:0.68rem;color:var(--gray);letter-spacing:1.5px;text-transform:uppercase}
+.ck-field input,.ck-field select{padding:0.75rem 0.9rem;border:1px solid var(--sand);background:var(--white);font-size:0.9rem;font-family:'Jost',sans-serif;color:var(--charcoal);outline:none;transition:border .2s;border-radius:2px}
+.ck-field input:focus,.ck-field select:focus{border-color:var(--espresso)}
+.ck-pay-tabs{display:flex;border:1px solid var(--sand);margin-bottom:1.2rem}
+.ck-pay-tab{flex:1;padding:0.65rem;text-align:center;font-size:0.72rem;letter-spacing:1.5px;text-transform:uppercase;cursor:none;border:none;background:transparent;color:var(--gray);transition:all .2s;font-family:'Jost',sans-serif}
+.ck-pay-tab.active{background:var(--espresso);color:var(--cream)}
+.ck-panel{display:none}.ck-panel.active{display:block}
+.ck-pix-box{background:var(--cream-dark);padding:1.5rem;text-align:center}
+.ck-pix-qr{width:180px;height:180px;margin:1rem auto;background:var(--sand);display:flex;align-items:center;justify-content:center;font-size:0.8rem;color:var(--gray)}
+.ck-pix-qr img{width:100%;height:100%}
+.ck-pix-code{background:var(--white);border:1px solid var(--sand);padding:0.6rem;font-size:0.7rem;word-break:break-all;color:var(--gray);margin-top:0.8rem;cursor:pointer;text-align:left}
+.ck-installments{width:100%;padding:0.75rem 0.9rem;border:1px solid var(--sand);font-size:0.9rem;font-family:'Jost',sans-serif;outline:none;margin-bottom:1rem;background:var(--white);cursor:none}
+.ck-installments:focus{border-color:var(--espresso)}
+.btn-ck-pay{width:100%;background:var(--espresso);color:var(--cream);border:none;padding:1.1rem;font-size:0.7rem;letter-spacing:3px;text-transform:uppercase;cursor:none;font-family:'Jost',sans-serif;transition:background .3s;margin-top:0.5rem;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-ck-pay:hover{background:var(--gold)}
+.btn-ck-pay:disabled{background:var(--sand);cursor:not-allowed}
+.ck-spinner{width:16px;height:16px;border:2px solid rgba(247,243,238,0.3);border-top-color:var(--cream);border-radius:50%;animation:ckSpin .7s linear infinite}
+@keyframes ckSpin{to{transform:rotate(360deg)}}
+.ck-error{background:#FFF0F0;border-left:2px solid #E24B4A;padding:0.8rem 1rem;font-size:0.82rem;color:#C0392B;margin-bottom:1rem;display:none}
+.ck-error.show{display:block}
+.ck-secure{display:flex;align-items:center;justify-content:center;gap:6px;font-size:0.7rem;color:var(--gray);margin-top:1rem;letter-spacing:0.5px}
+.ck-success{text-align:center;padding:2.5rem 1rem}
+.ck-success-icon{font-size:3.5rem;margin-bottom:1rem}
+.ck-success h3{font-family:'Cormorant Garamond',serif;font-size:1.6rem;font-weight:300;color:var(--espresso);margin-bottom:0.5rem}
+.ck-success p{font-size:0.88rem;color:var(--gray);line-height:1.7}
+</style>
+
+<div class="ck-overlay" id="ckOverlay" onclick="closeCkOutside(event)">
+  <div class="ck-modal">
+    <div class="ck-head">
+      <h3>Finalizar Pedido</h3>
+      <button class="ck-close" onclick="closeCheckoutGama()">Fechar ✕</button>
+    </div>
+    <div class="ck-body" id="ckBody">
+
+      <div class="ck-summary">
+        <div class="ck-summary-label">Resumo</div>
+        <div class="ck-summary-items" id="ckSummaryItems"></div>
+        <div class="ck-summary-total" id="ckSummaryTotal"></div>
+      </div>
+
+      <div class="ck-error" id="ckError"></div>
+
+      <!-- DADOS PESSOAIS -->
+      <div class="ck-section">
+        <div class="ck-section-title">Dados pessoais</div>
+        <div class="ck-grid">
+          <div class="ck-field"><label>Nome completo *</label><input type="text" id="ckName" placeholder="Maria da Silva"></div>
+          <div class="ck-field"><label>CPF *</label><input type="text" id="ckCpf" placeholder="000.000.000-00" maxlength="14" oninput="ckMaskCpf(this)"></div>
+        </div>
+        <div class="ck-grid">
+          <div class="ck-field"><label>E-mail *</label><input type="email" id="ckEmail" placeholder="seu@email.com"></div>
+          <div class="ck-field"><label>Telefone *</label><input type="text" id="ckPhone" placeholder="(11) 99999-0000" maxlength="15" oninput="ckMaskPhone(this)"></div>
+        </div>
+      </div>
+
+      <!-- PAGAMENTO -->
+      <div class="ck-section">
+        <div class="ck-section-title">Forma de pagamento</div>
+        <div class="ck-pay-tabs">
+          <button class="ck-pay-tab active" onclick="setCkTab(this,'credit')">Crédito</button>
+          <button class="ck-pay-tab" onclick="setCkTab(this,'debit')">Débito</button>
+          <button class="ck-pay-tab" onclick="setCkTab(this,'pix')">Pix</button>
+        </div>
+
+        <!-- CRÉDITO -->
+        <div class="ck-panel active" id="ck-panel-credit">
+          <select class="ck-installments" id="ckInstallments"></select>
+          <div class="ck-field full"><label>Número do cartão *</label><input type="text" id="ckCard" placeholder="0000 0000 0000 0000" maxlength="19" oninput="ckMaskCard(this)"></div>
+          <div class="ck-grid">
+            <div class="ck-field"><label>Validade *</label><input type="text" id="ckExpiry" placeholder="MM/AAAA" maxlength="7" oninput="ckMaskExpiry(this)"></div>
+            <div class="ck-field"><label>CVV *</label><input type="text" id="ckCvv" placeholder="123" maxlength="4"></div>
+          </div>
+          <div class="ck-field"><label>Nome no cartão *</label><input type="text" id="ckHolder" placeholder="MARIA DA SILVA" style="text-transform:uppercase"></div>
+        </div>
+
+        <!-- DÉBITO -->
+        <div class="ck-panel" id="ck-panel-debit">
+          <div class="ck-field full"><label>Número do cartão *</label><input type="text" id="ckCardD" placeholder="0000 0000 0000 0000" maxlength="19" oninput="ckMaskCard(this)"></div>
+          <div class="ck-grid">
+            <div class="ck-field"><label>Validade *</label><input type="text" id="ckExpiryD" placeholder="MM/AAAA" maxlength="7" oninput="ckMaskExpiry(this)"></div>
+            <div class="ck-field"><label>CVV *</label><input type="text" id="ckCvvD" placeholder="123" maxlength="4"></div>
+          </div>
+          <div class="ck-field"><label>Nome no cartão *</label><input type="text" id="ckHolderD" placeholder="MARIA DA SILVA" style="text-transform:uppercase"></div>
+        </div>
+
+        <!-- PIX -->
+        <div class="ck-panel" id="ck-panel-pix">
+          <div class="ck-pix-box">
+            <p style="font-size:0.85rem;color:var(--charcoal)">Clique em <strong>Gerar Pix</strong> para obter o QR Code.</p>
+            <div class="ck-pix-qr" id="ckPixQr">📱</div>
+            <div class="ck-pix-code" id="ckPixCode" style="display:none" onclick="ckCopyPix()">Clique para copiar o código</div>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn-ck-pay" id="btnCkPay" onclick="submitCkPayment()">
+        <span id="btnCkText">Confirmar pagamento</span>
+      </button>
+      <div class="ck-secure">🔒 Pagamento seguro via Getnet · Santander</div>
+    </div>
+  </div>
+</div>
+
+<script>
+let ckTab='credit', ckTotal=0;
+
+function openCheckoutGama(){
+  ckTotal=cart.reduce((s,i)=>s+(parseFloat(i.preco||0))*i.qty,0);
+  document.getElementById('ckSummaryItems').textContent=cart.map(i=>`${i.qty}x ${i.nome||'Produto'}`).join(' · ');
+  document.getElementById('ckSummaryTotal').textContent='Total: '+fmt(ckTotal);
+  ckBuildInstallments(ckTotal);
+  document.getElementById('ckError').classList.remove('show');
+  document.getElementById('ckPixQr').innerHTML='📱';
+  document.getElementById('ckPixCode').style.display='none';
+  document.getElementById('btnCkText').textContent='Confirmar pagamento';
+  document.getElementById('btnCkPay').disabled=false;
+  document.getElementById('ckOverlay').classList.add('open');
+}
+function closeCheckoutGama(){document.getElementById('ckOverlay').classList.remove('open')}
+function closeCkOutside(e){if(e.target===document.getElementById('ckOverlay'))closeCheckoutGama()}
+
+function setCkTab(btn,tab){
+  ckTab=tab;
+  document.querySelectorAll('.ck-pay-tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.ck-panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('ck-panel-'+tab).classList.add('active');
+  document.getElementById('btnCkText').textContent=tab==='pix'?'Gerar Pix':'Confirmar pagamento';
+}
+
+function ckBuildInstallments(total){
+  const sel=document.getElementById('ckInstallments');
+  sel.innerHTML='';
+  for(let i=1;i<=12;i++){
+    const v=fmt(total/i);
+    const o=document.createElement('option');
+    o.value=i;
+    o.textContent=i===1?`À vista — R$ ${v}`:`${i}x de R$ ${v} sem juros`;
+    sel.appendChild(o);
+  }
+}
+
+// Máscaras
+function ckMaskCpf(el){let v=el.value.replace(/\D/g,'').slice(0,11);v=v.replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d{1,2})$/,'$1-$2');el.value=v}
+function ckMaskPhone(el){let v=el.value.replace(/\D/g,'').slice(0,11);v=v.replace(/(\d{2})(\d)/,'($1) $2').replace(/(\d{5})(\d)/,'$1-$2');el.value=v}
+function ckMaskCard(el){let v=el.value.replace(/\D/g,'').slice(0,16);v=v.replace(/(\d{4})/g,'$1 ').trim();el.value=v}
+function ckMaskExpiry(el){let v=el.value.replace(/\D/g,'').slice(0,6);if(v.length>=2)v=v.slice(0,2)+'/'+v.slice(2);el.value=v}
+
+function ckValidate(){
+  const name=document.getElementById('ckName').value.trim();
+  const cpf=document.getElementById('ckCpf').value.replace(/\D/g,'');
+  const email=document.getElementById('ckEmail').value.trim();
+  const phone=document.getElementById('ckPhone').value.replace(/\D/g,'');
+  if(!name||name.length<3)return'Informe seu nome completo';
+  if(cpf.length!==11)return'CPF inválido';
+  if(!email.includes('@'))return'E-mail inválido';
+  if(phone.length<10)return'Telefone inválido';
+  if(ckTab!=='pix'){
+    const isC=ckTab==='credit';
+    const num=document.getElementById(isC?'ckCard':'ckCardD').value.replace(/\s/g,'');
+    const exp=document.getElementById(isC?'ckExpiry':'ckExpiryD').value;
+    const cvv=document.getElementById(isC?'ckCvv':'ckCvvD').value;
+    const hld=document.getElementById(isC?'ckHolder':'ckHolderD').value.trim();
+    if(num.length<16)return'Número do cartão inválido';
+    if(!exp.includes('/')||exp.length<7)return'Validade inválida';
+    if(cvv.length<3)return'CVV inválido';
+    if(!hld||hld.length<3)return'Informe o nome do titular';
+  }
+  return null;
+}
+
+function ckShowError(msg){const e=document.getElementById('ckError');e.textContent='⚠️ '+msg;e.classList.add('show')}
+
+async function submitCkPayment(){
+  document.getElementById('ckError').classList.remove('show');
+  const err=ckValidate();
+  if(err){ckShowError(err);return}
+
+  const btn=document.getElementById('btnCkPay');
+  btn.disabled=true;
+  btn.innerHTML='<div class="ck-spinner"></div> Processando...';
+
+  const amountCents=Math.round(ckTotal*100);
+  const reference=`GAMA-${Date.now()}`;
+  const isC=ckTab==='credit';
+
+  const payload={
+    kind:ckTab,
+    amount:amountCents,
+    reference,
+    installments:ckTab==='credit'?parseInt(document.getElementById('ckInstallments').value):1,
+    customerName:document.getElementById('ckName').value.trim(),
+    customerCpf:document.getElementById('ckCpf').value.replace(/\D/g,''),
+    customerEmail:document.getElementById('ckEmail').value.trim(),
+    customerPhone:document.getElementById('ckPhone').value.replace(/\D/g,''),
+    cardNumber:ckTab!=='pix'?document.getElementById(isC?'ckCard':'ckCardD').value:'',
+    cardExpiry:ckTab!=='pix'?document.getElementById(isC?'ckExpiry':'ckExpiryD').value:'',
+    cardCvv:ckTab!=='pix'?document.getElementById(isC?'ckCvv':'ckCvvD').value:'',
+    cardHolder:ckTab!=='pix'?document.getElementById(isC?'ckHolder':'ckHolderD').value:'',
+    items:cart.map(i=>`${i.qty}x ${i.nome||'Produto'}`).join(', '),
+  };
+
+  try{
+    const res=await fetch('/api/checkout-getnet',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(payload),
+    });
+    const data=await res.json();
+    if(!res.ok)throw new Error(data.error||'Erro no servidor');
+
+    if(ckTab==='pix'){
+      btn.disabled=false;
+      btn.innerHTML='Gerar Pix';
+      if(data.qr_code_image){
+        document.getElementById('ckPixQr').innerHTML=`<img src="data:image/png;base64,${data.qr_code_image}" alt="QR Code">`;
+      }
+      if(data.qr_code){
+        const c=document.getElementById('ckPixCode');
+        c.textContent=data.qr_code;
+        c.style.display='block';
+        window._ckPixCode=data.qr_code;
+      }
+      showToast('QR Code Pix gerado!');
+      ckPollPix(data.payment_id);
+      return;
+    }
+
+    if(data.status==='approved'){
+      ckShowSuccess(data);
+    }else{
+      throw new Error(data.message||'Pagamento recusado. Verifique os dados do cartão.');
+    }
+  }catch(err){
+    btn.disabled=false;
+    btn.innerHTML='Tentar novamente';
+    ckShowError(err.message);
+  }
+}
+
+function ckCopyPix(){
+  if(window._ckPixCode){
+    navigator.clipboard.writeText(window._ckPixCode)
+      .then(()=>showToast('Código copiado!'))
+      .catch(()=>showToast('Selecione e copie manualmente'));
+  }
+}
+
+async function ckPollPix(paymentId,attempts=0){
+  if(attempts>20)return;
+  setTimeout(async()=>{
+    try{
+      const r=await fetch(`/api/status-getnet?payment_id=${paymentId}`);
+      const d=await r.json();
+      if(d.status==='approved')ckShowSuccess(d);
+      else ckPollPix(paymentId,attempts+1);
+    }catch{ckPollPix(paymentId,attempts+1)}
+  },6000);
+}
+
+function ckShowSuccess(data){
+  cart=[];updateCart();
+  document.getElementById('ckBody').innerHTML=`
+    <div class="ck-success">
+      <div class="ck-success-icon">🎉</div>
+      <h3>Pedido confirmado!</h3>
+      <p>Seu pagamento foi aprovado com sucesso.<br>
+      ${data.payment_id||data.tid?`<strong>ID:</strong> ${data.payment_id||data.tid}<br>`:''}
+      ${data.authorization_code?`<strong>Autorização:</strong> ${data.authorization_code}<br>`:''}
+      Em breve nossa equipe entrará em contato.</p>
+      <button class="btn-gold" style="margin-top:2rem;cursor:pointer" onclick="closeCheckoutGama()">Continuar comprando</button>
+    </div>`;
+}
 </script>
 </body>
 </html>

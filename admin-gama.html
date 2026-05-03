@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gama Móveis — Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0C0A08;--bg2:#131210;--bg3:#1C1A16;--bg4:#242018;
+  --border:#2C2820;--border2:#3A342C;
+  --cream:#F7F3EE;--sand:#D4C5B0;--warm:#8B7355;
+  --gold:#B8965A;--gold-dim:rgba(184,150,90,0.15);--gold-glow:rgba(184,150,90,0.06);
+  --espresso:#2C1810;--white:#FEFCF9;--gray:#7A6E64;
+  --green:#1D9E75;--green-dim:rgba(29,158,117,0.15);
+  --red:#C0392B;--red-dim:rgba(192,57,43,0.15);
+  --yellow:#C9A227;--yellow-dim:rgba(201,162,39,0.15);
+  --blue:#4A7FA5;--blue-dim:rgba(74,127,165,0.15);
+}
+html{scroll-behavior:smooth}
+body{font-family:'Jost',sans-serif;background:var(--bg);color:var(--cream);min-height:100vh;overflow-x:hidden}
+
+/* ── LOGIN ── */
+.login-screen{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:1000}
+.login-screen.hidden{display:none}
+.login-bg{position:absolute;inset:0;overflow:hidden;pointer-events:none}
+.login-bg::before{content:'';position:absolute;width:700px;height:700px;background:radial-gradient(circle,rgba(184,150,90,0.05) 0%,transparent 70%);top:50%;left:50%;transform:translate(-50%,-50%)}
+.login-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(184,150,90,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(184,150,90,0.04) 1px,transparent 1px);background-size:60px 60px}
+.login-box{position:relative;z-index:1;width:100%;max-width:380px;padding:2rem}
+.login-wordmark{font-family:'Cormorant Garamond',serif;font-size:2.8rem;font-weight:300;color:var(--cream);letter-spacing:6px;text-transform:uppercase;margin-bottom:0.2rem}
+.login-wordmark em{font-style:italic;color:var(--gold)}
+.login-sub{font-size:0.62rem;letter-spacing:4px;color:var(--gray);text-transform:uppercase;margin-bottom:3rem}
+.login-form{display:flex;flex-direction:column;gap:1.2rem}
+.lf-field{display:flex;flex-direction:column;gap:6px}
+.lf-field label{font-size:0.62rem;color:var(--gray);letter-spacing:2px;text-transform:uppercase}
+.lf-field input{background:var(--bg3);border:1px solid var(--border2);padding:0.9rem 1rem;font-size:0.9rem;color:var(--cream);font-family:'Jost',sans-serif;outline:none;transition:border .2s}
+.lf-field input:focus{border-color:var(--gold)}
+.lf-field input::placeholder{color:var(--gray)}
+.login-btn{background:var(--gold);color:var(--bg);border:none;padding:1rem;font-size:0.68rem;letter-spacing:3px;text-transform:uppercase;cursor:pointer;font-family:'Jost',sans-serif;transition:all .25s;margin-top:0.5rem}
+.login-btn:hover{background:var(--warm);color:var(--cream)}
+.login-error{background:var(--red-dim);border-left:2px solid var(--red);padding:0.7rem 1rem;font-size:0.8rem;color:var(--red);display:none}
+.login-error.show{display:block}
+.login-ver{font-size:0.6rem;color:var(--border2);text-align:center;margin-top:2.5rem;letter-spacing:2px;text-transform:uppercase}
+
+/* ── DASHBOARD ── */
+.dashboard{display:none}
+.dashboard.visible{display:block}
+
+/* SIDEBAR */
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:220px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:50}
+.sb-logo{padding:1.8rem 1.5rem;border-bottom:1px solid var(--border)}
+.sb-wordmark{font-family:'Cormorant Garamond',serif;font-size:1.4rem;font-weight:300;color:var(--cream);letter-spacing:4px;text-transform:uppercase}
+.sb-wordmark em{font-style:italic;color:var(--gold)}
+.sb-sub{font-size:0.58rem;letter-spacing:2.5px;color:var(--gray);text-transform:uppercase;margin-top:3px}
+.sb-nav{flex:1;padding:1.2rem 0}
+.sb-item{display:flex;align-items:center;gap:10px;padding:0.75rem 1.5rem;cursor:pointer;transition:all .2s;border-left:2px solid transparent;font-size:0.82rem;color:var(--gray);text-decoration:none;letter-spacing:0.5px}
+.sb-item:hover{color:var(--cream);background:rgba(184,150,90,0.04)}
+.sb-item.active{color:var(--cream);border-left-color:var(--gold);background:var(--gold-glow)}
+.sb-icon{font-size:0.9rem;width:18px;text-align:center}
+.sb-footer{padding:1.2rem 1.5rem;border-top:1px solid var(--border)}
+.sb-user{font-size:0.72rem;color:var(--gray);margin-bottom:0.8rem;letter-spacing:0.5px}
+.logout-btn{background:none;border:1px solid var(--border2);color:var(--gray);padding:0.5rem 1rem;font-size:0.68rem;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;width:100%;font-family:'Jost',sans-serif;transition:all .2s}
+.logout-btn:hover{border-color:var(--red);color:var(--red)}
+
+/* MAIN */
+.main{margin-left:220px;min-height:100vh;padding:2.5rem 3rem}
+.topbar{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:2.5rem}
+.page-eyebrow{font-size:0.6rem;letter-spacing:3px;text-transform:uppercase;color:var(--gold);margin-bottom:0.4rem}
+.page-title{font-family:'Cormorant Garamond',serif;font-size:1.8rem;font-weight:300;color:var(--cream)}
+.page-title em{font-style:italic}
+.topbar-right{display:flex;align-items:center;gap:1rem;margin-top:0.5rem}
+.refresh-btn{background:var(--bg3);border:1px solid var(--border2);color:var(--gray);padding:0.5rem 1.2rem;font-size:0.68rem;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;font-family:'Jost',sans-serif;transition:all .2s}
+.refresh-btn:hover{border-color:var(--gold);color:var(--gold)}
+.live-badge{display:flex;align-items:center;gap:6px;font-size:0.62rem;color:var(--green);letter-spacing:1.5px;text-transform:uppercase}
+.live-dot{width:5px;height:5px;background:var(--green);border-radius:50%;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+
+/* DB BANNER */
+.db-banner{display:flex;align-items:center;gap:10px;padding:0.75rem 1.2rem;margin-bottom:2rem;font-size:0.8rem;border-left:2px solid}
+.db-banner.connected{background:var(--green-dim);border-color:var(--green);color:var(--green)}
+.db-banner.disconnected{background:var(--yellow-dim);border-color:var(--yellow);color:var(--yellow)}
+.db-banner.error{background:var(--red-dim);border-color:var(--red);color:var(--red)}
+
+/* KPI */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1.2rem;margin-bottom:2.5rem}
+.kpi-card{background:var(--bg2);border:1px solid var(--border);padding:1.5rem;position:relative;overflow:hidden}
+.kpi-card::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px}
+.kpi-card.gold::after{background:var(--gold)}
+.kpi-card.green::after{background:var(--green)}
+.kpi-card.blue::after{background:var(--blue)}
+.kpi-card.warm::after{background:var(--warm)}
+.kpi-eyebrow{font-size:0.6rem;letter-spacing:2.5px;text-transform:uppercase;color:var(--gray);margin-bottom:1rem}
+.kpi-value{font-family:'Cormorant Garamond',serif;font-size:2.2rem;font-weight:300;color:var(--cream);line-height:1;margin-bottom:0.3rem}
+.kpi-sub{font-size:0.72rem;color:var(--gray)}
+
+/* FILTERS */
+.filters-bar{display:flex;gap:0.8rem;margin-bottom:1.5rem;flex-wrap:wrap;align-items:center}
+.filter-input{background:var(--bg2);border:1px solid var(--border);padding:0.65rem 1rem;font-size:0.82rem;color:var(--cream);font-family:'Jost',sans-serif;outline:none;transition:border .2s}
+.filter-input:focus{border-color:var(--gold)}
+.filter-input::placeholder{color:var(--gray)}
+.filter-input.search{min-width:260px}
+.filter-select{background:var(--bg2);border:1px solid var(--border);padding:0.65rem 1rem;font-size:0.82rem;color:var(--cream);font-family:'Jost',sans-serif;outline:none;cursor:pointer}
+.filter-select option{background:var(--bg2)}
+.filters-right{margin-left:auto}
+.export-btn{background:none;border:1px solid var(--border2);color:var(--gray);padding:0.65rem 1.2rem;font-size:0.68rem;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;font-family:'Jost',sans-serif;transition:all .2s}
+.export-btn:hover{border-color:var(--gold);color:var(--gold)}
+
+/* TABLE */
+.table-wrap{background:var(--bg2);border:1px solid var(--border)}
+.table-header{padding:1.2rem 1.5rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.table-eyebrow{font-size:0.6rem;letter-spacing:2.5px;text-transform:uppercase;color:var(--gray)}
+.table-count{font-family:'Cormorant Garamond',serif;font-size:1rem;color:var(--gold)}
+table{width:100%;border-collapse:collapse}
+thead th{padding:0.8rem 1.2rem;text-align:left;font-size:0.6rem;color:var(--gray);letter-spacing:2px;text-transform:uppercase;border-bottom:1px solid var(--border);font-weight:400}
+tbody tr{border-bottom:1px solid var(--border);transition:background .15s;cursor:pointer}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:var(--gold-glow)}
+tbody td{padding:1rem 1.2rem;font-size:0.82rem;color:var(--cream);vertical-align:middle}
+.td-serif{font-family:'Cormorant Garamond',serif;font-size:1rem;font-weight:400}
+.td-mono{font-size:0.72rem;color:var(--gray);letter-spacing:0.5px}
+.td-amount{font-family:'Cormorant Garamond',serif;font-size:1rem;color:var(--gold)}
+.td-dim{font-size:0.75rem;color:var(--gray)}
+
+/* BADGES */
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;font-size:0.6rem;letter-spacing:1.5px;text-transform:uppercase;font-weight:400}
+.badge::before{content:'';width:4px;height:4px;border-radius:50%}
+.badge.approved{background:var(--green-dim);color:var(--green)}.badge.approved::before{background:var(--green)}
+.badge.pending{background:var(--yellow-dim);color:var(--yellow)}.badge.pending::before{background:var(--yellow)}
+.badge.declined{background:var(--red-dim);color:var(--red)}.badge.declined::before{background:var(--red)}
+.badge.credit{background:var(--blue-dim);color:var(--blue)}
+.badge.debit{background:var(--gold-dim);color:var(--gold)}
+.badge.pix{background:var(--green-dim);color:var(--green)}
+
+/* EMPTY / LOADING */
+.table-empty{padding:5rem;text-align:center;color:var(--gray)}
+.table-empty .ei{font-family:'Cormorant Garamond',serif;font-size:3rem;font-weight:300;font-style:italic;margin-bottom:1rem;opacity:0.3;display:block}
+.table-loading{padding:4rem;text-align:center}
+.gold-ring{width:28px;height:28px;border:1px solid var(--border2);border-top-color:var(--gold);border-radius:50%;animation:spin .9s linear infinite;margin:0 auto 1rem}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* MODAL */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:200;align-items:center;justify-content:center;padding:1rem;backdrop-filter:blur(6px)}
+.modal-overlay.open{display:flex}
+.modal{background:var(--bg2);border:1px solid var(--border2);width:100%;max-width:500px;max-height:85vh;overflow-y:auto}
+.modal-head{padding:1.8rem 2rem 1.4rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start;position:sticky;top:0;background:var(--bg2);z-index:1}
+.modal-eyebrow{font-size:0.58rem;letter-spacing:2.5px;color:var(--gold);text-transform:uppercase;margin-bottom:0.3rem}
+.modal-title{font-family:'Cormorant Garamond',serif;font-size:1.3rem;font-weight:300;color:var(--cream)}
+.modal-close{background:none;border:none;color:var(--gray);font-size:0.65rem;letter-spacing:2px;text-transform:uppercase;cursor:pointer;transition:color .2s}
+.modal-close:hover{color:var(--cream)}
+.modal-body{padding:2rem}
+.detail-section{margin-bottom:1.5rem}
+.detail-eyebrow{font-size:0.58rem;letter-spacing:2.5px;color:var(--gold);text-transform:uppercase;margin-bottom:0.8rem;padding-bottom:0.5rem;border-bottom:1px solid var(--border)}
+.detail-row{display:flex;justify-content:space-between;align-items:center;padding:0.55rem 0;border-bottom:1px solid rgba(44,40,32,0.5)}
+.detail-row:last-child{border-bottom:none}
+.detail-label{font-size:0.65rem;color:var(--gray);letter-spacing:1px;text-transform:uppercase}
+.detail-value{font-size:0.85rem;color:var(--cream);text-align:right}
+.detail-value.serif{font-family:'Cormorant Garamond',serif;font-size:1rem}
+.detail-value.gold{color:var(--gold);font-family:'Cormorant Garamond',serif;font-size:1.1rem}
+.detail-value.dim{font-size:0.72rem;color:var(--gray);letter-spacing:0.5px}
+
+/* PAGINATION */
+.pagination{display:flex;align-items:center;justify-content:space-between;padding:1.2rem 1.5rem;border-top:1px solid var(--border)}
+.page-info{font-size:0.72rem;color:var(--gray);letter-spacing:0.5px}
+.page-btns{display:flex;gap:0.3rem}
+.page-btn{background:var(--bg3);border:1px solid var(--border);color:var(--gray);width:30px;height:30px;font-size:0.78rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s;font-family:'Jost',sans-serif}
+.page-btn:hover,.page-btn.active{background:var(--gold);border-color:var(--gold);color:var(--bg)}
+.page-btn:disabled{opacity:0.25;cursor:not-allowed}
+
+/* RESPONSIVE */
+@media(max-width:960px){
+  .sidebar{width:56px}.sb-wordmark,.sb-sub,.sb-item span,.sb-footer .sb-user,.logout-btn{display:none}
+  .sb-item{justify-content:center;padding:0.8rem}.main{margin-left:56px;padding:1.5rem 1rem}
+  .kpi-grid{grid-template-columns:1fr 1fr}
+}
+@media(max-width:600px){
+  .kpi-grid{grid-template-columns:1fr}
+  thead th:nth-child(3),thead th:nth-child(5),tbody td:nth-child(3),tbody td:nth-child(5){display:none}
+  .filters-bar{flex-direction:column}.filter-input.search{min-width:unset;width:100%}
+  .filters-right{margin-left:0}
+}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-bg"><div class="login-grid"></div></div>
+  <div class="login-box">
+    <div class="login-wordmark">G<em>ama</em></div>
+    <div class="login-sub">Painel Administrativo</div>
+    <div class="login-form">
+      <div class="lf-field">
+        <label>Usuário</label>
+        <input type="text" id="loginUser" placeholder="admin" autocomplete="username">
+      </div>
+      <div class="lf-field">
+        <label>Senha</label>
+        <input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <div class="login-error" id="loginError">Credenciais incorretas.</div>
+      <button class="login-btn" onclick="doLogin()">Acessar painel →</button>
+    </div>
+    <div class="login-ver">Gama Admin · v1.0 · Sandbox</div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div class="dashboard" id="dashboard">
+
+  <div class="sidebar">
+    <div class="sb-logo">
+      <div class="sb-wordmark">G<em>ama</em></div>
+      <div class="sb-sub">Admin</div>
+    </div>
+    <nav class="sb-nav">
+      <a class="sb-item active" onclick="showPage('orders')"><span class="sb-icon">◈</span><span>Pedidos</span></a>
+      <a class="sb-item" onclick="showPage('stats')"><span class="sb-icon">◉</span><span>Estatísticas</span></a>
+      <a class="sb-item" onclick="showPage('settings')"><span class="sb-icon">◎</span><span>Configurações</span></a>
+    </nav>
+    <div class="sb-footer">
+      <div class="sb-user" id="sbUser"></div>
+      <button class="logout-btn" onclick="doLogout()">Sair</button>
+    </div>
+  </div>
+
+  <main class="main" id="mainContent">
+    <div class="topbar">
+      <div>
+        <div class="page-eyebrow">Gestão de Pedidos</div>
+        <div class="page-title">Pedidos <em>recentes</em></div>
+      </div>
+      <div class="topbar-right">
+        <div class="live-badge"><div class="live-dot"></div>Ao vivo</div>
+        <button class="refresh-btn" onclick="loadOrders()">↻ Atualizar</button>
+      </div>
+    </div>
+
+    <div class="db-banner" id="dbBanner"><span>⏳</span>&nbsp; Conectando...</div>
+
+    <div class="kpi-grid">
+      <div class="kpi-card gold"><div class="kpi-eyebrow">Total de Pedidos</div><div class="kpi-value" id="kpiTotal">—</div><div class="kpi-sub">desde o início</div></div>
+      <div class="kpi-card green"><div class="kpi-eyebrow">Receita Total</div><div class="kpi-value" id="kpiRevenue">—</div><div class="kpi-sub">pagamentos aprovados</div></div>
+      <div class="kpi-card blue"><div class="kpi-eyebrow">Ticket Médio</div><div class="kpi-value" id="kpiTicket">—</div><div class="kpi-sub">por pedido aprovado</div></div>
+      <div class="kpi-card warm"><div class="kpi-eyebrow">Hoje</div><div class="kpi-value" id="kpiToday">—</div><div class="kpi-sub">pedidos nas últimas 24h</div></div>
+    </div>
+
+    <div class="filters-bar">
+      <input type="text" class="filter-input search" id="searchFilter" placeholder="Buscar por nome, e-mail ou ID..." oninput="applyFilters()">
+      <select class="filter-select" id="statusFilter" onchange="applyFilters()">
+        <option value="">Todos os status</option>
+        <option value="approved">Aprovado</option>
+        <option value="pending">Pendente</option>
+        <option value="declined">Recusado</option>
+      </select>
+      <select class="filter-select" id="kindFilter" onchange="applyFilters()">
+        <option value="">Todas as formas</option>
+        <option value="credit">Crédito</option>
+        <option value="debit">Débito</option>
+        <option value="pix">Pix</option>
+      </select>
+      <div class="filters-right">
+        <button class="export-btn" onclick="exportCSV()">↓ Exportar CSV</button>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <div class="table-header">
+        <span class="table-eyebrow">Histórico de Pedidos</span>
+        <span class="table-count" id="tableCount">—</span>
+      </div>
+      <div id="tableBody">
+        <div class="table-loading"><div class="gold-ring"></div><p style="font-size:0.78rem;color:var(--gray);letter-spacing:0.5px">Carregando pedidos...</p></div>
+      </div>
+      <div class="pagination" id="pagination" style="display:none">
+        <span class="page-info" id="pageInfo"></span>
+        <div class="page-btns" id="pageBtns"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ORDER MODAL -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeMOutside(event)">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <div class="modal-eyebrow">Detalhes do Pedido</div>
+        <div class="modal-title" id="mTitle">—</div>
+        <div style="font-size:0.68rem;color:var(--gray);margin-top:4px" id="mDate"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal()">Fechar ✕</button>
+    </div>
+    <div class="modal-body" id="mBody"></div>
+  </div>
+</div>
+
+<script>
+/* ================================================================
+   ⚙️  CONFIGURAÇÕES — EDITE AQUI
+   ================================================================ */
+
+// ── SUPABASE ──────────────────────────────────────────────────
+// app.supabase.com → seu projeto → Settings → API
+const SUPABASE_URL = "COLE_A_URL_DO_SUPABASE_AQUI";
+// Exemplo: "https://xyzxyzxyz.supabase.co"
+
+const SUPABASE_KEY = "COLE_A_CHAVE_ANON_DO_SUPABASE_AQUI";
+// Exemplo: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+
+// ── ACESSO AO PAINEL ──────────────────────────────────────────
+const ADMIN_USER = "admin";
+const ADMIN_PASS = "gama@2025";
+
+// ── TABELA NO SUPABASE ────────────────────────────────────────
+const TABLE = "pedidos";
+
+/* ================================================================
+   ESTRUTURA DA TABELA "pedidos" no Supabase:
+
+   id              → int8, primary key, auto-increment
+   created_at      → timestamptz, default: now()
+   tid             → text
+   reference       → text
+   status          → text (approved / pending / declined)
+   kind            → text (credit / debit / pix)
+   amount          → int8 (valor em centavos)
+   installments    → int4
+   customer_name   → text
+   customer_email  → text
+   customer_cpf    → text
+   items           → text
+   authorization   → text
+   return_code     → text
+
+   Como criar:
+   1. app.supabase.com → Table Editor → New Table
+   2. Nome: pedidos
+   3. Crie as colunas acima
+   4. Row Level Security → Add Policy → Allow all (para testes)
+   ================================================================ */
+
+/* ── AUTH ── */
+const SK = 'gama_admin_session';
+function doLogin(){
+  const u=document.getElementById('loginUser').value.trim();
+  const p=document.getElementById('loginPass').value;
+  if(u===ADMIN_USER&&p===ADMIN_PASS){
+    sessionStorage.setItem(SK,JSON.stringify({user:u}));
+    document.getElementById('loginScreen').classList.add('hidden');
+    document.getElementById('dashboard').classList.add('visible');
+    document.getElementById('sbUser').textContent=u;
+    initDash();
+  }else{
+    document.getElementById('loginError').classList.add('show');
+    document.getElementById('loginPass').value='';
+  }
+}
+function doLogout(){sessionStorage.removeItem(SK);location.reload()}
+function checkSession(){
+  const s=sessionStorage.getItem(SK);
+  if(s){
+    const {user}=JSON.parse(s);
+    document.getElementById('loginScreen').classList.add('hidden');
+    document.getElementById('dashboard').classList.add('visible');
+    document.getElementById('sbUser').textContent=user;
+    initDash();
+  }
+}
+
+/* ── SUPABASE ── */
+const configured=SUPABASE_URL&&!SUPABASE_URL.includes('COLE_A_URL');
+async function supaFetch(path,opts={}){
+  const res=await fetch(`${SUPABASE_URL}/rest/v1/${path}`,{
+    headers:{'apikey':SUPABASE_KEY,'Authorization':`Bearer ${SUPABASE_KEY}`,'Content-Type':'application/json','Prefer':'return=representation',...opts.headers},
+    ...opts
+  });
+  if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(e.message||`HTTP ${res.status}`)}
+  return res.json();
+}
+
+/* ── STATE ── */
+let allOrders=[],filteredOrders=[],currentPage=1;
+const PAGE=15;
+
+async function initDash(){
+  await loadOrders();
+  setInterval(loadOrders,30000);
+}
+
+async function loadOrders(){
+  if(!configured){
+    setBanner('disconnected','⚠️  Configure SUPABASE_URL e SUPABASE_KEY no arquivo');
+    renderDemo();return;
+  }
+  try{
+    const orders=await supaFetch(`${TABLE}?select=*&order=created_at.desc`);
+    allOrders=orders||[];
+    setBanner('connected',`✓  Conectado · ${allOrders.length} pedido${allOrders.length!==1?'s':''} carregado${allOrders.length!==1?'s':''}`);
+    applyFilters();updateKPIs();
+  }catch(err){
+    setBanner('error',`✗  Erro: ${err.message}`);
+    renderDemo();
+  }
+}
+
+function setBanner(type,msg){
+  const b=document.getElementById('dbBanner');
+  b.className=`db-banner ${type}`;
+  b.innerHTML=`<span>${{connected:'✓',disconnected:'⚠️',error:'✗'}[type]}</span>&nbsp; ${msg}`;
+}
+
+function updateKPIs(){
+  const ap=allOrders.filter(o=>o.status==='approved');
+  const rev=ap.reduce((s,o)=>s+(o.amount||0),0)/100;
+  const tkt=ap.length?rev/ap.length:0;
+  const today=allOrders.filter(o=>new Date(o.created_at).toDateString()===new Date().toDateString()).length;
+  document.getElementById('kpiTotal').textContent=allOrders.length;
+  document.getElementById('kpiRevenue').textContent='R$ '+fmtM(rev);
+  document.getElementById('kpiTicket').textContent='R$ '+fmtM(tkt);
+  document.getElementById('kpiToday').textContent=today;
+}
+
+function fmtM(v){return parseFloat(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}
+function fmtD(d){if(!d)return'—';const dt=new Date(d);return dt.toLocaleDateString('pt-BR')+' · '+dt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}
+
+function applyFilters(){
+  const q=(document.getElementById('searchFilter').value||'').toLowerCase();
+  const st=document.getElementById('statusFilter').value;
+  const kd=document.getElementById('kindFilter').value;
+  filteredOrders=allOrders.filter(o=>{
+    const mQ=!q||(o.customer_name||'').toLowerCase().includes(q)||(o.customer_email||'').toLowerCase().includes(q)||(o.tid||'').toLowerCase().includes(q)||(o.reference||'').toLowerCase().includes(q);
+    return mQ&&(!st||o.status===st)&&(!kd||o.kind===kd);
+  });
+  currentPage=1;renderTable();
+}
+
+function renderTable(){
+  const total=filteredOrders.length;
+  document.getElementById('tableCount').textContent=`${total} pedido${total!==1?'s':''}`;
+  if(!total){
+    document.getElementById('tableBody').innerHTML=`<div class="table-empty"><span class="ei">∅</span><p>Nenhum pedido encontrado</p></div>`;
+    document.getElementById('pagination').style.display='none';return;
+  }
+  const start=(currentPage-1)*PAGE;
+  const page=filteredOrders.slice(start,start+PAGE);
+  const totalPages=Math.ceil(total/PAGE);
+  document.getElementById('tableBody').innerHTML=`
+    <table>
+      <thead><tr>
+        <th>Referência</th><th>Cliente</th><th>Itens</th>
+        <th>Valor</th><th>Forma</th><th>Status</th><th>Data</th>
+      </tr></thead>
+      <tbody>
+        ${page.map(o=>`
+          <tr onclick='openModal(${JSON.stringify(o).replace(/'/g,"&#39;")})'>
+            <td class="td-mono">${o.reference||o.tid||'—'}</td>
+            <td class="td-serif">${o.customer_name||'—'}</td>
+            <td class="td-dim" style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${o.items||'—'}</td>
+            <td class="td-amount">R$ ${fmtM((o.amount||0)/100)}</td>
+            <td><span class="badge ${o.kind||''}">${kindLbl(o.kind)}</span></td>
+            <td><span class="badge ${o.status||''}">${statusLbl(o.status)}</span></td>
+            <td class="td-mono">${fmtD(o.created_at)}</td>
+          </tr>`).join('')}
+      </tbody>
+    </table>`;
+  const pag=document.getElementById('pagination');
+  pag.style.display='flex';
+  document.getElementById('pageInfo').textContent=`Página ${currentPage} de ${totalPages}`;
+  const bts=document.getElementById('pageBtns');
+  bts.innerHTML=`
+    <button class="page-btn" onclick="goPage(${currentPage-1})" ${currentPage===1?'disabled':''}>‹</button>
+    ${Array.from({length:Math.min(totalPages,5)},(_,i)=>{
+      const p=Math.max(1,Math.min(currentPage-2,totalPages-4))+i;
+      return p<=totalPages?`<button class="page-btn ${p===currentPage?'active':''}" onclick="goPage(${p})">${p}</button>`:''
+    }).join('')}
+    <button class="page-btn" onclick="goPage(${currentPage+1})" ${currentPage===totalPages?'disabled':''}>›</button>`;
+}
+
+function goPage(p){
+  const t=Math.ceil(filteredOrders.length/PAGE);
+  if(p<1||p>t)return;
+  currentPage=p;renderTable();
+  document.querySelector('.table-wrap').scrollIntoView({behavior:'smooth'});
+}
+
+function kindLbl(k){return{credit:'Crédito',debit:'Débito',pix:'Pix'}[k]||k||'—'}
+function statusLbl(s){return{approved:'Aprovado',pending:'Pendente',declined:'Recusado'}[s]||s||'—'}
+
+/* ── MODAL ── */
+function openModal(o){
+  document.getElementById('mTitle').textContent=o.reference||o.tid||'Pedido';
+  document.getElementById('mDate').textContent=fmtD(o.created_at);
+  document.getElementById('mBody').innerHTML=`
+    <div class="detail-section">
+      <div class="detail-eyebrow">Cliente</div>
+      <div class="detail-row"><span class="detail-label">Nome</span><span class="detail-value serif">${o.customer_name||'—'}</span></div>
+      <div class="detail-row"><span class="detail-label">E-mail</span><span class="detail-value">${o.customer_email||'—'}</span></div>
+      <div class="detail-row"><span class="detail-label">CPF</span><span class="detail-value dim">${fmtCPF(o.customer_cpf||'')}</span></div>
+    </div>
+    <div class="detail-section">
+      <div class="detail-eyebrow">Pagamento</div>
+      <div class="detail-row"><span class="detail-label">Valor</span><span class="detail-value gold">R$ ${fmtM((o.amount||0)/100)}</span></div>
+      <div class="detail-row"><span class="detail-label">Forma</span><span class="detail-value"><span class="badge ${o.kind}">${kindLbl(o.kind)}</span></span></div>
+      <div class="detail-row"><span class="detail-label">Parcelas</span><span class="detail-value">${o.installments||1}×</span></div>
+      <div class="detail-row"><span class="detail-label">Status</span><span class="detail-value"><span class="badge ${o.status}">${statusLbl(o.status)}</span></span></div>
+    </div>
+    <div class="detail-section">
+      <div class="detail-eyebrow">Transação</div>
+      <div class="detail-row"><span class="detail-label">Payment ID</span><span class="detail-value dim">${o.tid||'—'}</span></div>
+      <div class="detail-row"><span class="detail-label">Auth Code</span><span class="detail-value dim">${o.auth_code||'—'}</span></div>
+      <div class="detail-row"><span class="detail-label">Referência</span><span class="detail-value dim">${o.reference||'—'}</span></div>
+    </div>
+    <div class="detail-section">
+      <div class="detail-eyebrow">Itens do Pedido</div>
+      <div style="padding:0.8rem 0;font-size:0.85rem;color:var(--sand);line-height:1.8;font-family:'Cormorant Garamond',serif;font-style:italic">${o.items||'—'}</div>
+    </div>`;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+function closeModal(){document.getElementById('modalOverlay').classList.remove('open')}
+function closeMOutside(e){if(e.target===document.getElementById('modalOverlay'))closeModal()}
+function fmtCPF(c){c=c.replace(/\D/g,'');return c.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4')||'—'}
+
+/* ── EXPORT ── */
+function exportCSV(){
+  if(!filteredOrders.length){alert('Nenhum pedido para exportar.');return}
+  const h=['Referência','TID','Cliente','E-mail','CPF','Valor','Forma','Parcelas','Status','Autorização','Data'];
+  const rows=filteredOrders.map(o=>[
+    o.reference||'',o.tid||'',o.customer_name||'',o.customer_email||'',o.customer_cpf||'',
+    ((o.amount||0)/100).toFixed(2),o.kind||'',o.installments||1,o.status||'',
+    o.auth_code||'',fmtD(o.created_at)
+  ]);
+  const csv=[h,...rows].map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}));
+  a.download=`gama-pedidos-${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+}
+
+/* ── DEMO DATA ── */
+function renderDemo(){
+  allOrders=[
+    {id:1,created_at:new Date().toISOString(),tid:'GAMA-001-pay',reference:'GAMA-001',status:'approved',kind:'credit',amount:489000,installments:6,customer_name:'Luciana Cavalcante',customer_email:'luciana@email.com',customer_cpf:'12345678901',items:'1× Sofá Linea 3L · Couro natural',auth_code:'AUTH001',return_code:'APPROVED'},
+    {id:2,created_at:new Date(Date.now()-3600000).toISOString(),tid:'GAMA-002-pay',reference:'GAMA-002',status:'approved',kind:'pix',amount:129000,installments:1,customer_name:'Rafael Fontes',customer_email:'rafael@email.com',customer_cpf:'98765432100',items:'1× Poltrona Arc · Veludo cinza',auth_code:'PIX002',return_code:'APPROVED'},
+    {id:3,created_at:new Date(Date.now()-7200000).toISOString(),tid:'GAMA-003-pay',reference:'GAMA-003',status:'pending',kind:'pix',amount:320000,installments:1,customer_name:'Patrícia Melo',customer_email:'patricia@email.com',customer_cpf:'55566677788',items:'1× Cama Nox Queen · MDF lacado',auth_code:'',return_code:'PENDING'},
+    {id:4,created_at:new Date(Date.now()-86400000).toISOString(),tid:'GAMA-004-pay',reference:'GAMA-004',status:'declined',kind:'debit',amount:89000,installments:1,customer_name:'Carlos Lima',customer_email:'carlos@email.com',customer_cpf:'99988877766',items:'1× Mesa de Centro · Madeira maciça',auth_code:'',return_code:'DECLINED'},
+    {id:5,created_at:new Date(Date.now()-172800000).toISOString(),tid:'GAMA-005-pay',reference:'GAMA-005',status:'approved',kind:'credit',amount:540000,installments:12,customer_name:'Ana Beatriz',customer_email:'ana@email.com',customer_cpf:'11122233344',items:'1× Guarda-Roupa 6P · MDF amadeirado',auth_code:'AUTH005',return_code:'APPROVED'},
+  ];
+  applyFilters();updateKPIs();
+}
+
+/* ── NAV ── */
+function showPage(page){
+  document.querySelectorAll('.sb-item').forEach(n=>n.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  if(page==='orders'){
+    location.reload();
+  }else if(page==='settings'){
+    document.getElementById('mainContent').innerHTML=`
+      <div class="topbar">
+        <div><div class="page-eyebrow">Sistema</div><div class="page-title">Con<em>figurações</em></div></div>
+      </div>
+      <div style="background:var(--bg2);border:1px solid var(--border);padding:2.5rem;max-width:560px">
+        <div style="font-size:0.6rem;color:var(--gold);letter-spacing:2.5px;text-transform:uppercase;margin-bottom:1.2rem">Supabase</div>
+        <div style="font-size:0.82rem;color:var(--gray);line-height:2;margin-bottom:2rem">
+          1. Acesse <strong style="color:var(--cream)">app.supabase.com</strong><br>
+          2. Vá em <strong style="color:var(--cream)">Settings → API</strong><br>
+          3. Copie <strong style="color:var(--cream)">Project URL</strong> → cole em <code style="color:var(--gold)">SUPABASE_URL</code><br>
+          4. Copie <strong style="color:var(--cream)">anon public key</strong> → cole em <code style="color:var(--gold)">SUPABASE_KEY</code>
+        </div>
+        <div style="font-size:0.6rem;color:var(--gold);letter-spacing:2.5px;text-transform:uppercase;margin-bottom:1.2rem">Acesso</div>
+        <div style="font-size:0.82rem;color:var(--gray);line-height:2">
+          Usuário: <code style="color:var(--cream)">${ADMIN_USER}</code><br>
+          Senha: edite <code style="color:var(--gold)">ADMIN_PASS</code> no arquivo
+        </div>
+      </div>`;
+  }
+}
+
+checkSession();
+</script>
+</body>
+</html>
