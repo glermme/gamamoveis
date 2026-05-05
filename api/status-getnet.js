@@ -11,7 +11,7 @@ const GETNET_SANDBOX       = process.env.GETNET_SANDBOX !== "false";
 
 const GETNET_URL = GETNET_SANDBOX
   ? "https://api-sbx.globalgetnet.com"
-  : "https://api.globalgetnet.com";
+  : "https://api-prd.globalgetnet.com";
 
 async function getToken() {
   const res = await fetch(`${GETNET_URL}/authentication/oauth2/access_token`, {
