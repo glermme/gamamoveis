@@ -202,6 +202,9 @@ module.exports = async function handler(req, res) {
 
     const data = await response.json();
 
+console.log("RESPOSTA GETNET:", JSON.stringify(data));
+
+    
     return res.status(200).json(data);
   } catch (err) {
     console.error("[checkout-getnet] Erro:", err.message);
