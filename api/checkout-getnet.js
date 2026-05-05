@@ -67,6 +67,9 @@ async function tokenizeCard(token, cardNumber, customerId) {
 
   const data = await response.json();
 
+  console.log("TOKEN RESPONSE:", JSON.stringify(data));
+  console.log("NUMBER TOKEN LENGTH:", data.number_token?.length);
+
   if (!response.ok) {
     throw new Error(JSON.stringify(data));
   }
