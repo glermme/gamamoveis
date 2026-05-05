@@ -124,6 +124,13 @@ module.exports = async function handler(req, res) {
       customerCpf,
       customerEmail,
       customerPhone,
+      addrStreet,
+      addrNumber,
+      addrComplement,
+      addrDistrict,
+      addrCity,
+      addrState,
+      addrZip,
       reference,
       items,
     } = req.body;
@@ -161,10 +168,21 @@ module.exports = async function handler(req, res) {
       customer_id:     customerId,
       first_name:      nameParts[0],
       last_name:       nameParts.slice(1).join(" ") || ".",
+      name:            customerName.trim(),
       email:           customerEmail,
       document_type:   "CPF",
       document_number: String(customerCpf).replace(/\D/g, ""),
       phone_number:    String(customerPhone).replace(/\D/g, ""),
+      billing_address: {
+        street:      addrStreet || "",
+        number:      addrNumber || "",
+        complement:  addrComplement || "",
+        district:    addrDistrict || "",
+        city:        addrCity || "",
+        state:       addrState || "",
+        country:     "Brasil",
+        postal_code: String(addrZip || "").replace(/\D/g, ""),
+      },
     };
 
     const deviceObj = {
@@ -261,6 +279,7 @@ module.exports = async function handler(req, res) {
               transaction_type:  "FULL",
               number_installments: Number(installments) || 1,
               soft_descriptor:   "GAMA MOVEIS",
+              dynamic_mcc:       1799,
               card:              cardObj,
             },
           }),
