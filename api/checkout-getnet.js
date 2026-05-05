@@ -1,62 +1,64 @@
 // ================================================================
 // api/checkout-getnet.js — Processa pagamentos via Getnet
 // ================================================================
-// Variáveis de ambiente no Vercel → Settings → Environment Variables:
-//
-//   GETNET_CLIENT_ID     → seu Client ID
-//   GETNET_CLIENT_SECRET → seu Client Secret
-//   GETNET_SELLER_ID     → seu Seller ID
-//   GETNET_SANDBOX       → "true" em teste, "false" em produção
-//
-// ================================================================
 
-const GETNET_CLIENT_ID     = process.env.GETNET_CLIENT_ID     || "51ddd8ca-e43c-4135-b5dc-111006f55a87";
-const GETNET_CLIENT_SECRET = process.env.GETNET_CLIENT_SECRET || "QEqjcDB7Xu1uvYEzsV9BcNRfK6dkJWmf";
-const GETNET_SELLER_ID     = process.env.GETNET_SELLER_ID     || "345b722a-6d40-4537-8640-950c6db7c14b";
-const GETNET_SANDBOX       = process.env.GETNET_SANDBOX !== "false"; // mude para false no Vercel
+const GETNET_CLIENT_ID = process.env.GETNET_CLIENT_ID;
+const GETNET_CLIENT_SECRET = process.env.GETNET_CLIENT_SECRET;
+const GETNET_SELLER_ID = process.env.GETNET_SELLER_ID;
+const GETNET_SANDBOX = process.env.GETNET_SANDBOX === "true";
+
+if (!GETNET_CLIENT_ID || !GETNET_CLIENT_SECRET || !GETNET_SELLER_ID) {
+  throw new Error("Variáveis da Getnet não configuradas");
+}
 
 const GETNET_URL = GETNET_SANDBOX
-  ? "https://api-sbx.globalgetnet.com"
+  ? "https://api-sandbox.getnet.com.br"
   : "https://api.getnet.com.br";
 
-// Supabase — salva pedidos no painel admin
+// Supabase
 const SUPABASE_URL = process.env.SUPABASE_URL || "";
 const SUPABASE_KEY = process.env.SUPABASE_KEY || "";
 
-/* ── Gera token de acesso Getnet ── */
-async function getToken() {
-  // Sandbox: novo portal (globalgetnet.com) → /authentication/oauth2/access_token
-  // Produção: portal BR (getnet.com.br)     → /auth/oauth/v2/token
-  const tokenPath = GETNET_SANDBOX
-    ? "/authentication/oauth2/access_token"
-    : "/auth/oauth/v2/token";
+/* ───────────────────────────────────────────── */
+/* TOKEN                                        */
+/* ───────────────────────────────────────────── */
 
-  const res = await fetch(`${GETNET_URL}${tokenPath}`, {
+async function getToken() {
+  const credentials = Buffer.from(
+    `${GETNET_CLIENT_ID}:${GETNET_CLIENT_SECRET}`
+  ).toString("base64");
+
+  const res = await fetch(`${GETNET_URL}/auth/oauth/v2/token`, {
     method: "POST",
     headers: {
-      "Authorization": `Basic ${Buffer.from(`${GETNET_CLIENT_ID}:${GETNET_CLIENT_SECRET}`).toString("base64")}`,
+      Authorization: `Basic ${credentials}`,
       "Content-Type": "application/x-www-form-urlencoded",
     },
-    body: "grant_type=client_credentials",
+    body: "grant_type=client_credentials&scope=oob",
   });
 
   const data = await res.json();
-  if (!res.ok) throw new Error(`Erro ao obter token: ${JSON.stringify(data)}`);
+
+  if (!res.ok) {
+    throw new Error(
+      `Erro ao obter token: ${JSON.stringify(data)}`
+    );
+  }
+
   return data.access_token;
 }
 
-/* ── Tokeniza o número do cartão ── */
-async function tokenizeCard(token, cardNumber, customerId) {
-  const tokenizePath = GETNET_SANDBOX
-    ? "/dpm/payments-gwproxy/v2/tokens/card"
-    : "/v1/tokens/card";
+/* ───────────────────────────────────────────── */
+/* TOKENIZA CARTÃO                              */
+/* ───────────────────────────────────────────── */
 
-  const res = await fetch(`${GETNET_URL}${tokenizePath}`, {
+async function tokenizeCard(token, cardNumber, customerId) {
+  const res = await fetch(`${GETNET_URL}/v1/tokens/card`, {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${token}`,
+      Authorization: `Bearer ${token}`,
+      seller_id: GETNET_SELLER_ID,
       "Content-Type": "application/json",
-      "x-seller-id": GETNET_SELLER_ID,
     },
     body: JSON.stringify({
       card_number: cardNumber.replace(/\s/g, ""),
@@ -65,269 +67,267 @@ async function tokenizeCard(token, cardNumber, customerId) {
   });
 
   const data = await res.json();
-  if (!res.ok) throw new Error(`Erro ao tokenizar cartão: ${JSON.stringify(data)}`);
+
+  if (!res.ok) {
+    throw new Error(
+      `Erro ao tokenizar cartão: ${JSON.stringify(data)}`
+    );
+  }
+
   return data.number_token;
 }
 
-/* ── Salva pedido no Supabase ── */
+/* ───────────────────────────────────────────── */
+/* SALVA NO SUPABASE                            */
+/* ───────────────────────────────────────────── */
+
 async function saveOrder(order) {
   if (!SUPABASE_URL || !SUPABASE_KEY) return;
+
   try {
     await fetch(`${SUPABASE_URL}/rest/v1/pedidos`, {
       method: "POST",
       headers: {
-        "apikey": SUPABASE_KEY,
-        "Authorization": `Bearer ${SUPABASE_KEY}`,
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${SUPABASE_KEY}`,
         "Content-Type": "application/json",
-        "Prefer": "return=minimal",
+        Prefer: "return=minimal",
       },
       body: JSON.stringify(order),
     });
   } catch (err) {
-    console.error("Erro ao salvar no Supabase:", err);
+    console.error("Erro ao salvar pedido:", err);
   }
 }
 
-/* ── Handler principal ── */
+/* ───────────────────────────────────────────── */
+/* HANDLER                                      */
+/* ───────────────────────────────────────────── */
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
-    return res.status(405).json({ error: "Método não permitido" });
+    return res.status(405).json({
+      error: "Método não permitido",
+    });
   }
 
   try {
     const {
-      amount,           // valor em centavos (ex: R$199,90 = 19990)
-      installments,     // parcelas
-      cardNumber,       // número do cartão
-      cardExpiry,       // "MM/YYYY"
+      amount,
+      installments,
+      cardNumber,
+      cardExpiry,
       cardCvv,
       cardHolder,
       customerName,
       customerCpf,
       customerEmail,
       customerPhone,
-      kind,             // "credit", "debit" ou "pix"
-      reference,        // ex: "GAMA-001"
-      items,            // descrição dos itens
+      kind,
+      reference,
+      items,
     } = req.body;
 
-    // gera token de acesso
     const accessToken = await getToken();
 
-    const orderId    = reference || `GAMA-${Date.now()}`;
+    const orderId = reference || `GAMA-${Date.now()}`;
     const customerId = `customer-${customerCpf.replace(/\D/g, "")}`;
-    const amountNum  = Number(amount);
+    const amountNum = Number(amount);
 
-    // ── PIX ──────────────────────────────────────────────────────
+    /* ───────────────── PIX ───────────────── */
+
     if (kind === "pix") {
       const pixBody = {
         seller_id: GETNET_SELLER_ID,
-        order_id:  orderId,
-        amount:    amountNum,
-        currency:  "BRL",
-        customer: {
-          customer_id:    customerId,
-          first_name:     customerName.split(" ")[0],
-          last_name:      customerName.split(" ").slice(1).join(" ") || ".",
-          document_type:  "CPF",
-          document_number: customerCpf.replace(/\D/g, ""),
-          email:          customerEmail,
-          phone_number:   customerPhone.replace(/\D/g, ""),
+        amount: amountNum,
+        currency: "BRL",
+        order: {
+          order_id: orderId,
         },
-        additional_data: {
-          payer_request: "Gama Móveis",
+        customer: {
+          customer_id: customerId,
+          first_name: customerName.split(" ")[0],
+          last_name:
+            customerName.split(" ").slice(1).join(" ") || ".",
+          email: customerEmail,
+          document_type: "CPF",
+          document_number: customerCpf.replace(/\D/g, ""),
+          phone_number: customerPhone.replace(/\D/g, ""),
         },
       };
 
-      const pixRes = await fetch(`${GETNET_URL}/dpm/payments-gwproxy/v2/payments`, {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-          "x-seller-id": GETNET_SELLER_ID,
-        },
-        body: JSON.stringify(pixBody),
-      });
+      const pixRes = await fetch(
+        `${GETNET_URL}/v1/payments/pix`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            seller_id: GETNET_SELLER_ID,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(pixBody),
+        }
+      );
 
       const pixData = await pixRes.json();
-      if (!pixRes.ok) throw new Error(`Erro Pix: ${JSON.stringify(pixData)}`);
+
+      if (!pixRes.ok) {
+        throw new Error(`Erro Pix: ${JSON.stringify(pixData)}`);
+      }
 
       await saveOrder({
-        tid:            pixData.payment_id || orderId,
-        reference:      orderId,
-        status:         "pending",
-        kind:           "pix",
-        amount:         amountNum,
-        installments:   1,
-        customer_name:  customerName,
+        tid: pixData.payment_id || orderId,
+        reference: orderId,
+        status: "pending",
+        kind: "pix",
+        amount: amountNum,
+        installments: 1,
+        customer_name: customerName,
         customer_email: customerEmail,
-        customer_cpf:   customerCpf.replace(/\D/g, ""),
-        items:          items || "",
-        auth_code:      "",
-        return_code:    "pending",
+        customer_cpf: customerCpf.replace(/\D/g, ""),
+        items: items || "",
       });
 
       return res.status(200).json({
-        kind:       "pix",
+        kind: "pix",
         payment_id: pixData.payment_id,
-        qrCode:     pixData.additional_data?.qr_code,
-        qrCodeImage: pixData.additional_data?.qr_code_image,
-        expiresAt:  pixData.additional_data?.expiration_time,
-        status:     "pending",
+        qrCode: pixData.qr_code,
+        status: "pending",
       });
     }
 
-    // ── CARTÃO CRÉDITO / DÉBITO ───────────────────────────────────
-    // aceita MM/AA ou MM/AAAA — sempre envia 2 dígitos para a Getnet
+    /* ──────────────── CARTÃO ─────────────── */
+
     const [expMonth, expYearRaw] = (cardExpiry || "").split("/");
-    const expYear = (expYearRaw || "").slice(-2);
+    const expYear = expYearRaw.slice(-2);
 
-    // tokeniza o cartão (obrigatório na Getnet)
-    const numberToken = await tokenizeCard(accessToken, cardNumber, customerId);
+    const numberToken = await tokenizeCard(
+      accessToken,
+      cardNumber,
+      customerId
+    );
 
-    const paymentMethod = kind === "debit" ? "DEBIT" : "CREDIT";
+    const endpoint =
+      kind === "debit"
+        ? "/v1/payments/debit"
+        : "/v1/payments/credit";
 
-    // Corpo do pagamento — formato varia por ambiente
-    const cardBody = GETNET_SANDBOX ? {
-      // Novo portal (sandbox)
-      idempotency_key: `${orderId}-${Date.now()}`,
-      order_id:        orderId,
-      data: {
-        amount:      amountNum,
-        currency:    "BRL",
-        customer_id: customerId,
-        payment: {
-          payment_method:      `${paymentMethod}_AUTHORIZATION`,
-          save_card_data:      false,
-          transaction_type:    "FULL",
-          number_installments: Number(installments) || 1,
-          soft_descriptor:     "GAMA MOVEIS",
-          dynamic_mcc:         5712,
-          card: {
-            number_token:     numberToken,
-            cardholder_name:  cardHolder,
-            security_code:    cardCvv,
-            brand:            detectBrand(cardNumber),
-            expiration_month: expMonth,
-            expiration_year:  expYear,
-          },
-        },
-      },
-    } : {
-      // Portal antigo (produção)
-      seller_id:  GETNET_SELLER_ID,
-      amount:     amountNum,
-      currency:   "BRL",
+    const paymentBody = {
+      seller_id: GETNET_SELLER_ID,
+      amount: amountNum,
+      currency: "BRL",
+
       order: {
-        order_id:     orderId,
-        sales_tax:    0,
+        order_id: orderId,
+        sales_tax: 0,
         product_type: "service",
       },
+
       customer: {
-        customer_id:     customerId,
-        first_name:      customerName.split(" ")[0],
-        last_name:       customerName.split(" ").slice(1).join(" ") || ".",
-        document_type:   "CPF",
+        customer_id: customerId,
+        first_name: customerName.split(" ")[0],
+        last_name:
+          customerName.split(" ").slice(1).join(" ") || ".",
+        email: customerEmail,
+        document_type: "CPF",
         document_number: customerCpf.replace(/\D/g, ""),
-        email:           customerEmail,
-        phone_number:    (customerPhone||"").replace(/\D/g, ""),
-        billing_address: {
-          street:      "Não informado",
-          number:      "0",
-          district:    "Centro",
-          city:        "Natal",
-          state:       "RN",
-          country:     "Brasil",
-          postal_code: "59000000",
-        },
+        phone_number: customerPhone.replace(/\D/g, ""),
       },
+
       device: {
-        device_id:  `device-${Date.now()}`,
-        ip_address: req.headers["x-forwarded-for"] || "127.0.0.1",
+        device_id: `device-${Date.now()}`,
+        ip_address:
+          req.headers["x-forwarded-for"] || "127.0.0.1",
       },
+
       [kind === "debit" ? "debit" : "credit"]: {
-        delayed:             false,
-        authenticated:       false,
-        pre_authorization:   false,
-        save_card_data:      false,
-        transaction_type:    "FULL",
+        delayed: false,
+        authenticated: false,
+        pre_authorization: false,
+        save_card_data: false,
+        transaction_type: "FULL",
         number_installments: Number(installments) || 1,
-        soft_descriptor:     "GAMA MOVEIS",
-        dynamic_mcc:         5712,
+        soft_descriptor: "GAMA MOVEIS",
+
         card: {
-          number_token:     numberToken,
-          cardholder_name:  cardHolder,
-          security_code:    cardCvv,
-          brand:            detectBrand(cardNumber),
+          number_token: numberToken,
+          cardholder_name: cardHolder,
+          security_code: cardCvv,
+          brand: detectBrand(cardNumber),
           expiration_month: expMonth,
-          expiration_year:  expYear,
+          expiration_year: expYear,
         },
       },
     };
 
-    const paymentPath = GETNET_SANDBOX
-      ? "/dpm/payments-gwproxy/v2/payments"
-      : kind === "debit" ? "/v1/payments/debit" : "/v1/payments/credit";
+    const paymentRes = await fetch(
+      `${GETNET_URL}${endpoint}`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          seller_id: GETNET_SELLER_ID,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(paymentBody),
+      }
+    );
 
-    const endpoint = `${GETNET_URL}${paymentPath}`;
+    const paymentData = await paymentRes.json();
 
-    const cardRes = await fetch(endpoint, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${accessToken}`,
-        "Content-Type": "application/json",
-        "x-seller-id": GETNET_SELLER_ID,
-      },
-      body: JSON.stringify(cardBody),
-    });
+    if (!paymentRes.ok) {
+      throw new Error(
+        `Erro pagamento: ${JSON.stringify(paymentData)}`
+      );
+    }
 
-    const cardData = await cardRes.json();
-    if (!cardRes.ok) throw new Error(`Erro cartão: ${JSON.stringify(cardData)}`);
-
-    // Produção usa "APPROVED", sandbox usa "AUTHORIZED"
-    const approved  = ["APPROVED","AUTHORIZED"].includes(cardData.status);
-    const paymentId = cardData.payment_id || orderId;
-    const authCode  = cardData.authorization_code
-      || cardData.credit?.authorization_code
-      || cardData.debit?.authorization_code
-      || "";
+    const approved = paymentData.status === "APPROVED";
 
     await saveOrder({
-      tid:            paymentId,
-      reference:      orderId,
-      status:         approved ? "approved" : "declined",
+      tid: paymentData.payment_id || orderId,
+      reference: orderId,
+      status: approved ? "approved" : "declined",
       kind,
-      amount:         amountNum,
-      installments:   Number(installments) || 1,
-      customer_name:  customerName,
+      amount: amountNum,
+      installments: Number(installments) || 1,
+      customer_name: customerName,
       customer_email: customerEmail,
-      customer_cpf:   customerCpf.replace(/\D/g, ""),
-      items:          items || "",
-      auth_code:      authCode,
-      return_code:    cardData.status || "",
+      customer_cpf: customerCpf.replace(/\D/g, ""),
+      items: items || "",
+      return_code: paymentData.status || "",
     });
 
     return res.status(200).json({
-      kind,
-      payment_id:         paymentId,
-      status:             approved ? "approved" : "declined",
-      authorization_code: authCode,
-      message:            cardData.status,
+      payment_id: paymentData.payment_id,
+      status: approved ? "approved" : "declined",
+      raw_status: paymentData.status,
     });
-
   } catch (err) {
     console.error("Erro checkout Getnet:", err);
-    return res.status(500).json({ error: err.message });
+
+    return res.status(500).json({
+      error: err.message,
+    });
   }
 }
 
-/* detecta bandeira pelo número */
+/* ───────────────────────────────────────────── */
+/* DETECTA BANDEIRA                             */
+/* ───────────────────────────────────────────── */
+
 function detectBrand(num) {
   const n = num.replace(/\s/g, "");
-  if (/^4/.test(n))                return "Visa";
-  if (/^5[1-5]/.test(n))          return "Mastercard";
-  if (/^3[47]/.test(n))           return "Amex";
-  if (/^(606282|3841)/.test(n))   return "Hipercard";
-  if (/^(6362|438935|504175|451416|636297|5067|4576|4011)/.test(n)) return "Elo";
-  return "Mastercard"; // fallback
+
+  if (/^4/.test(n)) return "Visa";
+  if (/^5[1-5]/.test(n)) return "Mastercard";
+  if (/^3[47]/.test(n)) return "Amex";
+  if (/^(606282|3841)/.test(n)) return "Hipercard";
+
+  if (
+    /^(6362|438935|504175|451416|636297|5067|4576|4011)/.test(n)
+  ) {
+    return "Elo";
+  }
+
+  return "Mastercard";
 }
