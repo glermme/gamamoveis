@@ -190,6 +190,9 @@ module.exports = async function handler(req, res) {
       },
     };
 
+console.log("PAYMENT BODY CARD:", JSON.stringify(paymentBody.credit.card));
+console.log("PAYMENT BODY CUSTOMER:", JSON.stringify(paymentBody.customer));
+    
     const response = await fetch(`${GETNET_URL}/v1/payments/credit`, {
       method: "POST",
       headers: {
