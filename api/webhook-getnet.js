@@ -32,6 +32,11 @@ async function updateOrder(paymentId, status) {
 }
 
 module.exports = async function handler(req, res) {
+  // GET: ping de validação da Getnet
+  if (req.method === "GET") {
+    return res.status(200).json({ ok: true });
+  }
+
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Método não permitido" });
   }
