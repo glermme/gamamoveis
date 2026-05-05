@@ -1,39 +1,49 @@
+// ================================================================
+// api/checkout-getnet.js
+// ================================================================
+
 const GETNET_CLIENT_ID = process.env.GETNET_CLIENT_ID;
 const GETNET_CLIENT_SECRET = process.env.GETNET_CLIENT_SECRET;
 const GETNET_SELLER_ID = process.env.GETNET_SELLER_ID;
 
 const GETNET_URL = "https://api.getnet.com.br";
 
-/* TOKEN */
+/* ───────────────────────────────────────────── */
+/* TOKEN                                        */
+/* ───────────────────────────────────────────── */
 
 async function getToken() {
   const credentials = Buffer.from(
     `${GETNET_CLIENT_ID}:${GETNET_CLIENT_SECRET}`
   ).toString("base64");
 
-  const res = await fetch(
+  const response = await fetch(
     `${GETNET_URL}/auth/oauth/v2/token`,
     {
       method: "POST",
+
       headers: {
         Authorization: `Basic ${credentials}`,
         "Content-Type":
           "application/x-www-form-urlencoded",
       },
+
       body: "grant_type=client_credentials&scope=oob",
     }
   );
 
-  const data = await res.json();
+  const data = await response.json();
 
-  if (!res.ok) {
+  if (!response.ok) {
     throw new Error(JSON.stringify(data));
   }
 
   return data.access_token;
 }
 
-/* TOKENIZA CARTÃO */
+/* ───────────────────────────────────────────── */
+/* TOKENIZA CARTÃO                              */
+/* ───────────────────────────────────────────── */
 
 async function tokenizeCard(
   token,
@@ -44,9 +54,10 @@ async function tokenizeCard(
     `${GETNET_URL}/v1/tokens/card`,
     {
       method: "POST",
+
       headers: {
         Authorization: `Bearer ${token}`,
-        seller_id: GETNET_SELLER_ID,
+        "x-seller-id": GETNET_SELLER_ID,
         "Content-Type": "application/json",
       },
 
@@ -65,6 +76,10 @@ async function tokenizeCard(
 
   return data.number_token;
 }
+
+/* ───────────────────────────────────────────── */
+/* HANDLER                                      */
+/* ───────────────────────────────────────────── */
 
 export default async function handler(req, res) {
   try {
@@ -98,6 +113,83 @@ export default async function handler(req, res) {
 
     const year = yearRaw.slice(-2);
 
+    const paymentBody = {
+      seller_id: GETNET_SELLER_ID,
+
+      amount: Number(amount),
+
+      currency: "BRL",
+
+      order: {
+        order_id: `GAMA-${Date.now()}`,
+        sales_tax: 0,
+        product_type: "service",
+      },
+
+      customer: {
+        customer_id: customerId,
+
+        first_name:
+          customerName.split(" ")[0],
+
+        last_name:
+          customerName
+            .split(" ")
+            .slice(1)
+            .join(" ") || ".",
+
+        email: customerEmail,
+
+        document_type: "CPF",
+
+        document_number:
+          customerCpf.replace(/\D/g, ""),
+
+        phone_number:
+          customerPhone.replace(/\D/g, ""),
+      },
+
+      device: {
+        device_id:
+          "device-" + Date.now(),
+
+        ip_address:
+          req.headers["x-forwarded-for"] ||
+          "127.0.0.1",
+      },
+
+      credit: {
+        delayed: false,
+
+        authenticated: false,
+
+        pre_authorization: false,
+
+        save_card_data: false,
+
+        transaction_type: "FULL",
+
+        number_installments:
+          Number(installments) || 1,
+
+        soft_descriptor: "GAMA MOVEIS",
+
+        card: {
+          number_token: numberToken,
+
+          cardholder_name: cardHolder,
+
+          security_code: cardCvv,
+
+          brand: detectBrand(cardNumber),
+
+          expiration_month: month,
+
+          expiration_year: year,
+        },
+      },
+    };
+
     const response = await fetch(
       `${GETNET_URL}/v1/payments/credit`,
       {
@@ -105,83 +197,11 @@ export default async function handler(req, res) {
 
         headers: {
           Authorization: `Bearer ${token}`,
-          seller_id: GETNET_SELLER_ID,
+          "x-seller-id": GETNET_SELLER_ID,
           "Content-Type": "application/json",
         },
 
-        body: JSON.stringify({
-          seller_id: GETNET_SELLER_ID,
-
-          amount: Number(amount),
-
-          currency: "BRL",
-
-          order: {
-            order_id: `GAMA-${Date.now()}`,
-            sales_tax: 0,
-            product_type: "service",
-          },
-
-          customer: {
-            customer_id: customerId,
-
-            first_name:
-              customerName.split(" ")[0],
-
-            last_name:
-              customerName
-                .split(" ")
-                .slice(1)
-                .join(" ") || ".",
-
-            email: customerEmail,
-
-            document_type: "CPF",
-
-            document_number:
-              customerCpf.replace(/\D/g, ""),
-
-            phone_number:
-              customerPhone.replace(/\D/g, ""),
-          },
-
-          device: {
-            device_id:
-              "device-" + Date.now(),
-
-            ip_address:
-              req.headers["x-forwarded-for"] ||
-              "127.0.0.1",
-          },
-
-          credit: {
-            delayed: false,
-            authenticated: false,
-            pre_authorization: false,
-            save_card_data: false,
-
-            transaction_type: "FULL",
-
-            number_installments:
-              Number(installments) || 1,
-
-            soft_descriptor: "GAMA MOVEIS",
-
-            card: {
-              number_token: numberToken,
-
-              cardholder_name: cardHolder,
-
-              security_code: cardCvv,
-
-              brand: detectBrand(cardNumber),
-
-              expiration_month: month,
-
-              expiration_year: year,
-            },
-          },
-        }),
+        body: JSON.stringify(paymentBody),
       }
     );
 
@@ -197,15 +217,24 @@ export default async function handler(req, res) {
   }
 }
 
+/* ───────────────────────────────────────────── */
+/* DETECTA BANDEIRA                             */
+/* ───────────────────────────────────────────── */
+
 function detectBrand(num) {
   const n = num.replace(/\s/g, "");
 
-  if (/^4/.test(n)) return "Visa";
+  if (/^4/.test(n)) {
+    return "Visa";
+  }
 
-  if (/^5[1-5]/.test(n))
+  if (/^5[1-5]/.test(n)) {
     return "Mastercard";
+  }
 
-  if (/^3[47]/.test(n)) return "Amex";
+  if (/^3[47]/.test(n)) {
+    return "Amex";
+  }
 
   if (
     /^(6362|438935|504175|451416|636297|5067|4576|4011)/.test(
