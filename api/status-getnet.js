@@ -4,9 +4,9 @@
 // Uso: GET /api/status-getnet?payment_id=XXXX
 // ================================================================
 
-const GETNET_CLIENT_ID     = process.env.GETNET_CLIENT_ID     || "sbx_0b70ae43-b638-4f02-9e50-fe16ae0c571a";
-const GETNET_CLIENT_SECRET = process.env.GETNET_CLIENT_SECRET || "5c90c3f7-e435-482b-902e-dfb9d1585aab";
-const GETNET_SELLER_ID     = process.env.GETNET_SELLER_ID     || "192ec5f4-31af-4652-aecc-ea1032a38f37";
+const GETNET_CLIENT_ID     = process.env.GETNET_CLIENT_ID     || "51ddd8ca-e43c-4135-b5dc-111006f55a87";
+const GETNET_CLIENT_SECRET = process.env.GETNET_CLIENT_SECRET || "QEqjcDB7Xu1uvYEzsV9BcNRfK6dkJWmf";
+const GETNET_SELLER_ID     = process.env.GETNET_SELLER_ID     || "345b722a-6d40-4537-8640-950c6db7c14b";
 const GETNET_SANDBOX       = process.env.GETNET_SANDBOX !== "false";
 
 const GETNET_URL = GETNET_SANDBOX
