@@ -1029,7 +1029,8 @@ async function submitCkPayment(){
         c.style.display='block';
         window._ckPixCode=qrCode;
       }
-      showToast('QR Code Pix gerado! Após pagar, você receberá a confirmação por e-mail.');
+      showToast('QR Code Pix gerado! Aguardando pagamento...');
+      ckPollPix(data.payment_id);
       return;
     }
 
@@ -1054,13 +1055,16 @@ function ckCopyPix(){
 }
 
 async function ckPollPix(paymentId,attempts=0){
-  if(attempts>20)return;
+  if(attempts>40)return; // 4 minutos no total
   setTimeout(async()=>{
     try{
-      const r=await fetch(`/api/status-getnet?payment_id=${paymentId}`);
+      const r=await fetch(`/api/status-pix?tid=${paymentId}`);
       const d=await r.json();
-      if(d.status==='approved')ckShowSuccess(d);
-      else ckPollPix(paymentId,attempts+1);
+      if(d.status==='approved'||d.status==='APPROVED'){
+        ckShowSuccess({payment_id:paymentId,...d});
+      } else {
+        ckPollPix(paymentId,attempts+1);
+      }
     }catch{ckPollPix(paymentId,attempts+1)}
   },6000);
 }
