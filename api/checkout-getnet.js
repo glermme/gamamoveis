@@ -204,6 +204,7 @@ module.exports = async function handler(req, res) {
     // ── DEBUG: body que será enviado à Getnet ──
     console.log("PAYMENT CARD:", JSON.stringify(paymentBody.credit.card));
     console.log("PAYMENT CUSTOMER:", JSON.stringify(paymentBody.customer));
+    console.log("PAYMENT BODY COMPLETO:", JSON.stringify(paymentBody));
 
     const response = await fetch(`${GETNET_URL}/v1/payments/credit`, {
       method: "POST",
