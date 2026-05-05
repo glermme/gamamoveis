@@ -42,7 +42,7 @@ async function getToken() {
 /* HANDLER                                      */
 /* ───────────────────────────────────────────── */
 
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   try {
     const { payment_id } = req.query;
 
