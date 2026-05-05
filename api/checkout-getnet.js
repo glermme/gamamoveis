@@ -2,11 +2,44 @@
 // api/checkout-getnet.js
 // ================================================================
 
-const GETNET_CLIENT_ID = process.env.GETNET_CLIENT_ID;
+const GETNET_CLIENT_ID  = process.env.GETNET_CLIENT_ID;
 const GETNET_CLIENT_SECRET = process.env.GETNET_CLIENT_SECRET;
-const GETNET_SELLER_ID = process.env.GETNET_SELLER_ID;
+const GETNET_SELLER_ID  = process.env.GETNET_SELLER_ID;
+const SUPABASE_URL      = process.env.SUPABASE_URL || "";
+const SUPABASE_KEY      = process.env.SUPABASE_KEY || "";
 
 const GETNET_URL = "https://api.getnet.com.br";
+
+/* ───────────────────────────────────────────── */
+/* SUPABASE: insere pedido                      */
+/* ───────────────────────────────────────────── */
+
+async function insertOrder(row) {
+  if (!SUPABASE_URL || !SUPABASE_KEY) {
+    console.warn("Supabase nao configurado, pulando insert.");
+    return;
+  }
+  try {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/pedidos`, {
+      method: "POST",
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${SUPABASE_KEY}`,
+        "Content-Type": "application/json",
+        Prefer: "return=minimal",
+      },
+      body: JSON.stringify(row),
+    });
+    if (!res.ok) {
+      const txt = await res.text();
+      console.error("Supabase insert erro:", txt);
+    } else {
+      console.log("Supabase insert OK:", row.tid);
+    }
+  } catch (err) {
+    console.error("Supabase insert exception:", err.message);
+  }
+}
 
 /* ───────────────────────────────────────────── */
 /* TOKEN                                        */
@@ -27,25 +60,19 @@ async function getToken() {
   });
 
   const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error("Falha ao obter token: " + JSON.stringify(data));
-  }
-
+  if (!response.ok) throw new Error("Falha ao obter token: " + JSON.stringify(data));
   return data.access_token;
 }
 
 /* ───────────────────────────────────────────── */
-/* TOKENIZA CARTÃO                              */
+/* TOKENIZA CARTAO                              */
 /* ───────────────────────────────────────────── */
 
 async function tokenizeCard(token, cardNumber, customerId) {
   const cleanNumber = String(cardNumber).replace(/\D/g, "");
 
   if (!cleanNumber || cleanNumber.length < 13 || cleanNumber.length > 19) {
-    throw new Error(
-      `Número de cartão inválido: "${cardNumber}" -> "${cleanNumber}"`
-    );
+    throw new Error(`Numero de cartao invalido: "${cardNumber}" -> "${cleanNumber}"`);
   }
 
   const response = await fetch(`${GETNET_URL}/v1/tokens/card`, {
@@ -55,37 +82,25 @@ async function tokenizeCard(token, cardNumber, customerId) {
       "x-seller-id": GETNET_SELLER_ID,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
-      card_number: cleanNumber,
-      customer_id: customerId,
-    }),
+    body: JSON.stringify({ card_number: cleanNumber, customer_id: customerId }),
   });
 
   const data = await response.json();
-
-  if (!response.ok) {
-    throw new Error("Falha ao tokenizar cartão: " + JSON.stringify(data));
-  }
-
+  if (!response.ok) throw new Error("Falha ao tokenizar cartao: " + JSON.stringify(data));
   return data.number_token;
 }
 
 /* ───────────────────────────────────────────── */
-/* HELPER: fetch com resposta segura            */
+/* HELPER: fetch seguro                         */
 /* ───────────────────────────────────────────── */
 
 async function getnetFetch(url, options) {
   const response = await fetch(url, options);
-  const rawText = await response.text();
+  const rawText  = await response.text();
 
   let data;
-  try {
-    data = JSON.parse(rawText);
-  } catch (_) {
-    throw new Error(
-      "Getnet retornou resposta nao-JSON: " + rawText.slice(0, 300)
-    );
-  }
+  try { data = JSON.parse(rawText); }
+  catch (_) { throw new Error("Getnet retornou nao-JSON: " + rawText.slice(0, 300)); }
 
   console.log("GETNET RESPONSE:", JSON.stringify(data));
   return { response, data };
@@ -97,8 +112,6 @@ async function getnetFetch(url, options) {
 
 module.exports = async function handler(req, res) {
   try {
-    console.log("BODY RECEBIDO:", JSON.stringify(req.body));
-
     const {
       kind,
       amount,
@@ -112,89 +125,70 @@ module.exports = async function handler(req, res) {
       customerEmail,
       customerPhone,
       reference,
+      items,
     } = req.body;
 
     // -- Validacoes comuns ----------------------
-    if (!kind || !["credit", "debit", "pix"].includes(kind)) {
+    if (!kind || !["credit", "debit", "pix"].includes(kind))
       return res.status(400).json({ error: "Tipo de pagamento invalido" });
-    }
-    if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
+    if (!amount || isNaN(Number(amount)) || Number(amount) <= 0)
       return res.status(400).json({ error: "Valor invalido" });
-    }
-    if (!customerCpf) {
+    if (!customerCpf)
       return res.status(400).json({ error: "CPF nao informado" });
-    }
-    if (!customerName) {
+    if (!customerName)
       return res.status(400).json({ error: "Nome nao informado" });
-    }
 
-    // -- Validacoes de cartao (credito/debito) --
+    // -- Validacoes de cartao -------------------
     if (kind !== "pix") {
-      if (!cardNumber || String(cardNumber).replace(/\D/g, "").length < 13) {
+      if (!cardNumber || String(cardNumber).replace(/\D/g, "").length < 13)
         return res.status(400).json({ error: "Numero de cartao invalido" });
-      }
-      if (!cardExpiry || !cardExpiry.includes("/")) {
+      if (!cardExpiry || !cardExpiry.includes("/"))
         return res.status(400).json({ error: "Validade do cartao invalida" });
-      }
-      if (!cardCvv) {
+      if (!cardCvv)
         return res.status(400).json({ error: "CVV nao informado" });
-      }
-      if (!cardHolder || cardHolder.trim().length < 3) {
+      if (!cardHolder || cardHolder.trim().length < 3)
         return res.status(400).json({ error: "Nome do titular invalido" });
-      }
     }
 
-    // -- Token Getnet ---------------------------
-    const token = await getToken();
-
+    // -- Prepara dados --------------------------
+    const token      = await getToken();
     const customerId = "customer-" + String(customerCpf).replace(/\D/g, "");
-    const orderId = reference || `GAMA-${Date.now()}`;
-    const amountNum = Number(amount);
+    const orderId    = reference || `GAMA-${Date.now()}`;
+    const amountNum  = Number(amount);
 
     const nameParts = customerName.trim().split(" ");
-    const firstName = nameParts[0];
-    const lastName = nameParts.slice(1).join(" ") || ".";
-
     const customerObj = {
-      customer_id: customerId,
-      first_name: firstName,
-      last_name: lastName,
-      email: customerEmail,
-      document_type: "CPF",
+      customer_id:     customerId,
+      first_name:      nameParts[0],
+      last_name:       nameParts.slice(1).join(" ") || ".",
+      email:           customerEmail,
+      document_type:   "CPF",
       document_number: String(customerCpf).replace(/\D/g, ""),
-      phone_number: String(customerPhone).replace(/\D/g, ""),
+      phone_number:    String(customerPhone).replace(/\D/g, ""),
     };
 
     const deviceObj = {
-      device_id: "device-" + Date.now(),
+      device_id:  "device-" + Date.now(),
       ip_address: req.headers["x-forwarded-for"] || "127.0.0.1",
     };
 
-    const orderObj = {
-      order_id: orderId,
-      sales_tax: 0,
-      product_type: "service",
+    const orderObj = { order_id: orderId, sales_tax: 0, product_type: "service" };
+
+    // Linha base do pedido para o Supabase
+    const baseRow = {
+      reference:      orderId,
+      kind,
+      amount:         amountNum,
+      installments:   Number(installments) || 1,
+      customer_name:  customerName,
+      customer_email: customerEmail,
+      customer_cpf:   String(customerCpf).replace(/\D/g, ""),
+      items:          items || "",
+      status:         "pending",
     };
 
     /* -- PIX ----------------------------------- */
     if (kind === "pix") {
-      const pixBody = {
-        seller_id: GETNET_SELLER_ID,
-        amount: amountNum,
-        currency: "BRL",
-        order: orderObj,
-        customer: customerObj,
-        device: deviceObj,
-        pix: {
-          expiration_time: 3600,
-          additional_data: [
-            { name: "Loja", value: "Gama Moveis" },
-          ],
-        },
-      };
-
-      console.log("PIX BODY:", JSON.stringify(pixBody));
-
       const { data } = await getnetFetch(
         `${GETNET_URL}/v1/payments/qrcode/pix`,
         {
@@ -204,101 +198,129 @@ module.exports = async function handler(req, res) {
             "x-seller-id": GETNET_SELLER_ID,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(pixBody),
+          body: JSON.stringify({
+            seller_id: GETNET_SELLER_ID,
+            amount:    amountNum,
+            currency:  "BRL",
+            order:     orderObj,
+            customer:  customerObj,
+            device:    deviceObj,
+            pix: {
+              expiration_time:  3600,
+              additional_data: [{ name: "Loja", value: "Gama Moveis" }],
+            },
+          }),
         }
       );
+
+      // Salva pedido no Supabase
+      await insertOrder({ ...baseRow, tid: data.payment_id || null, status: "pending" });
 
       return res.status(200).json(data);
     }
 
-    /* -- CARTAO (credito ou debito) ------------ */
+    /* -- CARTAO -------------------------------- */
     const [month, yearRaw] = cardExpiry.split("/");
     const year = String(yearRaw).trim().slice(-2);
-
     const numberToken = await tokenizeCard(token, cardNumber, customerId);
 
     const cardObj = {
-      number_token: numberToken,
+      number_token:    numberToken,
       cardholder_name: cardHolder.trim(),
-      security_code: String(cardCvv).replace(/\D/g, ""),
-      brand: detectBrand(cardNumber),
+      security_code:   String(cardCvv).replace(/\D/g, ""),
+      brand:           detectBrand(cardNumber),
       expiration_month: month.trim(),
-      expiration_year: year,
+      expiration_year:  year,
     };
 
-    /* -- CREDITO -------------------------------- */
+    const cardHeaders = {
+      Authorization: `Bearer ${token}`,
+      "x-seller-id": GETNET_SELLER_ID,
+      "Content-Type": "application/json",
+    };
+
+    /* -- CREDITO ------------------------------- */
     if (kind === "credit") {
-      const creditBody = {
-        seller_id: GETNET_SELLER_ID,
-        amount: amountNum,
-        currency: "BRL",
-        order: orderObj,
-        customer: customerObj,
-        device: deviceObj,
-        credit: {
-          delayed: false,
-          authenticated: false,
-          pre_authorization: false,
-          save_card_data: false,
-          transaction_type: "FULL",
-          number_installments: Number(installments) || 1,
-          soft_descriptor: "GAMA MOVEIS",
-          card: cardObj,
-        },
-      };
-
-      console.log("CREDIT BODY:", JSON.stringify(creditBody));
-
       const { data } = await getnetFetch(
         `${GETNET_URL}/v1/payments/credit`,
         {
           method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "x-seller-id": GETNET_SELLER_ID,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(creditBody),
+          headers: cardHeaders,
+          body: JSON.stringify({
+            seller_id: GETNET_SELLER_ID,
+            amount:    amountNum,
+            currency:  "BRL",
+            order:     orderObj,
+            customer:  customerObj,
+            device:    deviceObj,
+            credit: {
+              delayed:           false,
+              authenticated:     false,
+              pre_authorization: false,
+              save_card_data:    false,
+              transaction_type:  "FULL",
+              number_installments: Number(installments) || 1,
+              soft_descriptor:   "GAMA MOVEIS",
+              card:              cardObj,
+            },
+          }),
         }
       );
+
+      const status     = data.status === "APPROVED" ? "approved" : "pending";
+      const authCode   = data.credit?.authorization_code || data.authorization_code || "";
+      const returnCode = data.credit?.terminal_nsu || data.terminal_nsu || "";
+
+      await insertOrder({
+        ...baseRow,
+        tid:         data.payment_id || null,
+        status,
+        auth_code:   authCode,
+        return_code: returnCode,
+      });
 
       return res.status(200).json(data);
     }
 
-    /* -- DEBITO --------------------------------- */
+    /* -- DEBITO -------------------------------- */
     if (kind === "debit") {
-      const debitBody = {
-        seller_id: GETNET_SELLER_ID,
-        amount: amountNum,
-        currency: "BRL",
-        order: orderObj,
-        customer: customerObj,
-        device: deviceObj,
-        debit: {
-          authenticated: false,
-          transaction_type: "FULL",
-          soft_descriptor: "GAMA MOVEIS",
-          card: cardObj,
-        },
-      };
-
-      console.log("DEBIT BODY:", JSON.stringify(debitBody));
-
       const { data } = await getnetFetch(
         `${GETNET_URL}/v1/payments/debit`,
         {
           method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "x-seller-id": GETNET_SELLER_ID,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(debitBody),
+          headers: cardHeaders,
+          body: JSON.stringify({
+            seller_id: GETNET_SELLER_ID,
+            amount:    amountNum,
+            currency:  "BRL",
+            order:     orderObj,
+            customer:  customerObj,
+            device:    deviceObj,
+            debit: {
+              authenticated:    false,
+              transaction_type: "FULL",
+              soft_descriptor:  "GAMA MOVEIS",
+              card:             cardObj,
+            },
+          }),
         }
       );
 
+      const status     = data.status === "APPROVED" ? "approved" : "pending";
+      const authCode   = data.debit?.authorization_code || data.authorization_code || "";
+      const returnCode = data.debit?.terminal_nsu || data.terminal_nsu || "";
+
+      await insertOrder({
+        ...baseRow,
+        tid:         data.payment_id || null,
+        status,
+        auth_code:   authCode,
+        return_code: returnCode,
+      });
+
       return res.status(200).json(data);
     }
+
   } catch (err) {
     console.error("[checkout-getnet] Erro:", err.message);
     return res.status(500).json({ error: err.message });
@@ -311,13 +333,11 @@ module.exports = async function handler(req, res) {
 
 function detectBrand(num) {
   const n = String(num).replace(/\D/g, "");
-
   if (/^4/.test(n)) return "Visa";
   if (/^5[1-5]/.test(n)) return "Mastercard";
   if (/^2(2[2-9][1-9]|[3-6]\d{2}|7[01]\d|720)\d/.test(n)) return "Mastercard";
   if (/^3[47]/.test(n)) return "Amex";
   if (/^(6362|438935|504175|451416|636297|5067|4576|4011)/.test(n)) return "Elo";
   if (/^606282/.test(n)) return "Hipercard";
-
   return "Mastercard";
 }
