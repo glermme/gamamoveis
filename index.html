@@ -545,20 +545,22 @@ function imgOrEmoji(url,emoji,style='width:100%;height:100%;object-fit:cover;dis
 
 /* ── HERO CELLS ── */
 function fillHeroCells(rows){
+  const r=rows.find(r=>r.foto_hero_1||r.foto_hero_2||r.foto_hero_3||r.foto_hero_4||r.foto_hero)||rows[0]||{};
   for(let i=0;i<4;i++){
     const cell=document.getElementById('hrb'+(i+1));
-    const r=rows[i]||{};
-    const url=r.foto_hero||r['foto hero']||'';
+    const url=r[`foto_hero_${i+1}`]||r['foto_hero']||r['foto hero']||'';
     cell.innerHTML=imgOrEmoji(url,HERO_EMOJIS[i],'width:100%;height:100%;object-fit:cover;display:block;transition:transform .6s');
   }
 }
 
 /* ── LIFESTYLE CELLS ── */
 function fillLifestyleCells(rows){
+  // Pega a primeira linha que tiver algum foto_lifestyle
+  const r=rows.find(r=>r.foto_lifestyle_1||r.foto_lifestyle_2||r.foto_lifestyle_3||r.foto_lifestyle_4||r.foto_lifestyle)||rows[0]||{};
   for(let i=0;i<4;i++){
     const cell=document.getElementById('lrc'+(i+1));
-    const r=rows[i]||{};
-    const url=r.foto_lifestyle||r['foto lifestyle']||'';
+    // tenta foto_lifestyle_1..4 primeiro, depois foto_lifestyle genérico
+    const url=r[`foto_lifestyle_${i+1}`]||r['foto_lifestyle']||r['foto lifestyle']||'';
     cell.innerHTML=imgOrEmoji(url,LIFE_EMOJIS[i],'width:100%;height:100%;object-fit:cover;display:block;transition:transform .5s');
   }
 }
@@ -866,7 +868,7 @@ observeFade();
           <select class="ck-installments" id="ckInstallments"></select>
           <div class="ck-field full"><label>Número do cartão *</label><input type="text" id="ckCard" placeholder="0000 0000 0000 0000" maxlength="19" oninput="ckMaskCard(this)"></div>
           <div class="ck-grid">
-            <div class="ck-field"><label>Validade *</label><input type="text" id="ckExpiry" placeholder="MM/AAAA" maxlength="7" oninput="ckMaskExpiry(this)"></div>
+            <div class="ck-field"><label>Validade *</label><input type="text" id="ckExpiry" placeholder="MM/AA" maxlength="5" oninput="ckMaskExpiry(this)"></div>
             <div class="ck-field"><label>CVV *</label><input type="text" id="ckCvv" placeholder="123" maxlength="4"></div>
           </div>
           <div class="ck-field"><label>Nome no cartão *</label><input type="text" id="ckHolder" placeholder="MARIA DA SILVA" style="text-transform:uppercase"></div>
@@ -876,7 +878,7 @@ observeFade();
         <div class="ck-panel" id="ck-panel-debit">
           <div class="ck-field full"><label>Número do cartão *</label><input type="text" id="ckCardD" placeholder="0000 0000 0000 0000" maxlength="19" oninput="ckMaskCard(this)"></div>
           <div class="ck-grid">
-            <div class="ck-field"><label>Validade *</label><input type="text" id="ckExpiryD" placeholder="MM/AAAA" maxlength="7" oninput="ckMaskExpiry(this)"></div>
+            <div class="ck-field"><label>Validade *</label><input type="text" id="ckExpiryD" placeholder="MM/AA" maxlength="5" oninput="ckMaskExpiry(this)"></div>
             <div class="ck-field"><label>CVV *</label><input type="text" id="ckCvvD" placeholder="123" maxlength="4"></div>
           </div>
           <div class="ck-field"><label>Nome no cartão *</label><input type="text" id="ckHolderD" placeholder="MARIA DA SILVA" style="text-transform:uppercase"></div>
@@ -943,7 +945,7 @@ function ckBuildInstallments(total){
 function ckMaskCpf(el){let v=el.value.replace(/\D/g,'').slice(0,11);v=v.replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d{1,2})$/,'$1-$2');el.value=v}
 function ckMaskPhone(el){let v=el.value.replace(/\D/g,'').slice(0,11);v=v.replace(/(\d{2})(\d)/,'($1) $2').replace(/(\d{5})(\d)/,'$1-$2');el.value=v}
 function ckMaskCard(el){let v=el.value.replace(/\D/g,'').slice(0,16);v=v.replace(/(\d{4})/g,'$1 ').trim();el.value=v}
-function ckMaskExpiry(el){let v=el.value.replace(/\D/g,'').slice(0,6);if(v.length>=2)v=v.slice(0,2)+'/'+v.slice(2);el.value=v}
+function ckMaskExpiry(el){let v=el.value.replace(/\D/g,'').slice(0,4);if(v.length>=2)v=v.slice(0,2)+'/'+v.slice(2);el.value=v}
 
 function ckValidate(){
   const name=document.getElementById('ckName').value.trim();
@@ -961,7 +963,7 @@ function ckValidate(){
     const cvv=document.getElementById(isC?'ckCvv':'ckCvvD').value;
     const hld=document.getElementById(isC?'ckHolder':'ckHolderD').value.trim();
     if(num.length<16)return'Número do cartão inválido';
-    if(!exp.includes('/')||exp.length<7)return'Validade inválida';
+    if(!exp.includes('/')||exp.length<5)return'Validade inválida (use MM/AA)';
     if(cvv.length<3)return'CVV inválido';
     if(!hld||hld.length<3)return'Informe o nome do titular';
   }
