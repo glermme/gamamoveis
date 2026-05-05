@@ -1,70 +1,42 @@
 // ================================================================
-// api/status-getnet.js
+// api/status-pix.js — Consulta status do PIX no Supabase
 // ================================================================
 
-const GETNET_CLIENT_ID = process.env.GETNET_CLIENT_ID;
-const GETNET_CLIENT_SECRET = process.env.GETNET_CLIENT_SECRET;
-const GETNET_SELLER_ID = process.env.GETNET_SELLER_ID;
-
-const GETNET_URL = "https://api.getnet.com.br";
-
-async function getToken() {
-  const credentials = Buffer.from(
-    `${GETNET_CLIENT_ID}:${GETNET_CLIENT_SECRET}`
-  ).toString("base64");
-
-  const response = await fetch(`${GETNET_URL}/auth/oauth/v2/token`, {
-    method: "POST",
-    headers: {
-      Authorization: `Basic ${credentials}`,
-      "Content-Type": "application/x-www-form-urlencoded",
-    },
-    body: "grant_type=client_credentials&scope=oob",
-  });
-
-  const data = await response.json();
-  if (!response.ok) throw new Error(JSON.stringify(data));
-  return data.access_token;
-}
+const SUPABASE_URL = process.env.SUPABASE_URL || "";
+const SUPABASE_KEY = process.env.SUPABASE_KEY || "";
 
 module.exports = async function handler(req, res) {
   try {
-    const { payment_id, kind } = req.query;
+    const { tid } = req.query;
 
-    if (!payment_id || !payment_id.trim()) {
-      return res.status(400).json({ error: "payment_id nao informado" });
+    if (!tid) {
+      return res.status(400).json({ error: "tid nao informado" });
     }
 
-    const token = await getToken();
+    if (!SUPABASE_URL || !SUPABASE_KEY) {
+      return res.status(500).json({ error: "Supabase nao configurado" });
+    }
 
-    // Rota generica da Getnet funciona para todos os tipos
-    const route = kind === "pix"
-      ? `/v1/payments/qrcode/${payment_id.trim()}`
-      : kind === "debit"
-      ? `/v1/payments/debit/${payment_id.trim()}`
-      : `/v1/payments/credit/${payment_id.trim()}`;
+    const response = await fetch(
+      `${SUPABASE_URL}/rest/v1/pedidos?tid=eq.${tid}&select=status,tid,reference,amount,customer_name`,
+      {
+        headers: {
+          apikey: SUPABASE_KEY,
+          Authorization: `Bearer ${SUPABASE_KEY}`,
+          Accept: "application/json",
+        },
+      }
+    );
 
-    console.log("STATUS ROUTE:", route);
+    const rows = await response.json();
 
-    const response = await fetch(`${GETNET_URL}${route}`, {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "x-seller-id": GETNET_SELLER_ID,
-        Accept: "application/json",
-      },
-    });
+    if (!rows || rows.length === 0) {
+      return res.status(404).json({ error: "Pedido nao encontrado" });
+    }
 
-    const rawText = await response.text();
-    console.log("RESPOSTA GETNET RAW:", rawText);
-
-    let data;
-    try { data = JSON.parse(rawText); }
-    catch (_) { throw new Error("Resposta nao-JSON: " + rawText.slice(0, 200)); }
-
-    return res.status(response.ok ? 200 : response.status).json(data);
+    return res.status(200).json(rows[0]);
   } catch (err) {
-    console.error("[status-getnet] Erro:", err.message);
+    console.error("[status-pix] Erro:", err.message);
     return res.status(500).json({ error: err.message });
   }
 };
