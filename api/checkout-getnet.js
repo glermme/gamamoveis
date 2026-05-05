@@ -17,7 +17,7 @@ const GETNET_SANDBOX       = process.env.GETNET_SANDBOX !== "false"; // mude par
 
 const GETNET_URL = GETNET_SANDBOX
   ? "https://api-sbx.globalgetnet.com"
-  : "https://api.globalgetnet.com";
+  : "https://api-prd.globalgetnet.com";
 
 // Supabase — salva pedidos no painel admin
 const SUPABASE_URL = process.env.SUPABASE_URL || "";
