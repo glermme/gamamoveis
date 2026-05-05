@@ -80,6 +80,14 @@ async function tokenizeCard(token, cardNumber, customerId) {
 
 module.exports = async function handler(req, res) {
   try {
+    // ── DEBUG: variáveis de ambiente ──────────
+    console.log("ENV CHECK:", {
+      clientId: process.env.GETNET_CLIENT_ID ? "OK" : "FALTANDO",
+      secret: process.env.GETNET_CLIENT_SECRET ? "OK" : "FALTANDO",
+      sellerId: process.env.GETNET_SELLER_ID ? "OK" : "FALTANDO",
+      url: GETNET_URL,
+    });
+
     const {
       amount,
       installments,
@@ -190,9 +198,10 @@ module.exports = async function handler(req, res) {
       },
     };
 
-console.log("PAYMENT BODY CARD:", JSON.stringify(paymentBody.credit.card));
-console.log("PAYMENT BODY CUSTOMER:", JSON.stringify(paymentBody.customer));
-    
+    // ── DEBUG: body que será enviado à Getnet ──
+    console.log("PAYMENT CARD:", JSON.stringify(paymentBody.credit.card));
+    console.log("PAYMENT CUSTOMER:", JSON.stringify(paymentBody.customer));
+
     const response = await fetch(`${GETNET_URL}/v1/payments/credit`, {
       method: "POST",
       headers: {
@@ -203,11 +212,16 @@ console.log("PAYMENT BODY CUSTOMER:", JSON.stringify(paymentBody.customer));
       body: JSON.stringify(paymentBody),
     });
 
-    const data = await response.json();
+    const rawText = await response.text();
+    console.log("RESPOSTA GETNET RAW:", rawText);
 
-console.log("RESPOSTA GETNET:", JSON.stringify(data));
+    let data;
+    try {
+      data = JSON.parse(rawText);
+    } catch {
+      throw new Error("Getnet retornou resposta não-JSON: " + rawText.slice(0, 200));
+    }
 
-    
     return res.status(200).json(data);
   } catch (err) {
     console.error("[checkout-getnet] Erro:", err.message);
