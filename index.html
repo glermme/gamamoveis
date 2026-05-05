@@ -855,6 +855,24 @@ observeFade();
         </div>
       </div>
 
+      <!-- ENDEREÇO -->
+      <div class="ck-section">
+        <div class="ck-section-title">Endereço de cobrança</div>
+        <div class="ck-grid">
+          <div class="ck-field"><label>CEP *</label><input type="text" id="ckZip" placeholder="00000-000" maxlength="9" oninput="ckMaskZip(this)" onblur="ckFetchCep(this.value)"></div>
+          <div class="ck-field"><label>Número *</label><input type="text" id="ckAddrNum" placeholder="123"></div>
+        </div>
+        <div class="ck-grid">
+          <div class="ck-field"><label>Rua *</label><input type="text" id="ckStreet" placeholder="Av. Brasil"></div>
+          <div class="ck-field"><label>Bairro *</label><input type="text" id="ckDistrict" placeholder="Centro"></div>
+        </div>
+        <div class="ck-grid">
+          <div class="ck-field"><label>Cidade *</label><input type="text" id="ckCity" placeholder="São Paulo"></div>
+          <div class="ck-field"><label>Estado *</label><input type="text" id="ckState" placeholder="SP" maxlength="2" style="text-transform:uppercase"></div>
+        </div>
+        <div class="ck-field"><label>Complemento</label><input type="text" id="ckComplement" placeholder="Apto 10, Sala 2 (opcional)"></div>
+      </div>
+
       <!-- PAGAMENTO -->
       <div class="ck-section">
         <div class="ck-section-title">Forma de pagamento</div>
@@ -946,6 +964,21 @@ function ckBuildInstallments(total){
 function ckMaskCpf(el){let v=el.value.replace(/\D/g,'').slice(0,11);v=v.replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d{1,2})$/,'$1-$2');el.value=v}
 function ckMaskPhone(el){let v=el.value.replace(/\D/g,'').slice(0,11);v=v.replace(/(\d{2})(\d)/,'($1) $2').replace(/(\d{5})(\d)/,'$1-$2');el.value=v}
 function ckMaskCard(el){let v=el.value.replace(/\D/g,'').slice(0,16);v=v.replace(/(\d{4})/g,'$1 ').trim();el.value=v}
+function ckMaskZip(el){let v=el.value.replace(/\D/g,'').slice(0,8);v=v.replace(/(\d{5})(\d)/,'$1-$2');el.value=v}
+async function ckFetchCep(val){
+  const cep=val.replace(/\D/g,'');
+  if(cep.length!==8)return;
+  try{
+    const r=await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+    const d=await r.json();
+    if(d.erro)return;
+    document.getElementById('ckStreet').value=d.logradouro||'';
+    document.getElementById('ckDistrict').value=d.bairro||'';
+    document.getElementById('ckCity').value=d.localidade||'';
+    document.getElementById('ckState').value=d.uf||'';
+    document.getElementById('ckAddrNum').focus();
+  }catch{}
+}
 function ckMaskExpiry(el){let v=el.value.replace(/\D/g,'').slice(0,4);if(v.length>=2)v=v.slice(0,2)+'/'+v.slice(2);el.value=v}
 
 function ckValidate(){
@@ -957,6 +990,13 @@ function ckValidate(){
   if(cpf.length!==11)return'CPF inválido';
   if(!email.includes('@'))return'E-mail inválido';
   if(phone.length<10)return'Telefone inválido';
+  const zip=document.getElementById('ckZip').value.replace(/\D/g,'');
+  if(zip.length!==8)return'CEP inválido';
+  if(!document.getElementById('ckStreet').value.trim())return'Informe a rua';
+  if(!document.getElementById('ckAddrNum').value.trim())return'Informe o número';
+  if(!document.getElementById('ckDistrict').value.trim())return'Informe o bairro';
+  if(!document.getElementById('ckCity').value.trim())return'Informe a cidade';
+  if(!document.getElementById('ckState').value.trim())return'Informe o estado';
   if(ckTab!=='pix'){
     const isC=ckTab==='credit';
     const num=document.getElementById(isC?'ckCard':'ckCardD').value.replace(/\s/g,'');
@@ -995,6 +1035,13 @@ async function submitCkPayment(){
     customerCpf:document.getElementById('ckCpf').value.replace(/\D/g,''),
     customerEmail:document.getElementById('ckEmail').value.trim(),
     customerPhone:document.getElementById('ckPhone').value.replace(/\D/g,''),
+    addrStreet:document.getElementById('ckStreet').value.trim(),
+    addrNumber:document.getElementById('ckAddrNum').value.trim(),
+    addrComplement:document.getElementById('ckComplement').value.trim(),
+    addrDistrict:document.getElementById('ckDistrict').value.trim(),
+    addrCity:document.getElementById('ckCity').value.trim(),
+    addrState:document.getElementById('ckState').value.trim().toUpperCase(),
+    addrZip:document.getElementById('ckZip').value.replace(/\D/g,''),
     cardNumber:ckTab!=='pix'?document.getElementById(isC?'ckCard':'ckCardD').value:'',
     cardExpiry:ckTab!=='pix'?document.getElementById(isC?'ckExpiry':'ckExpiryD').value:'',
     cardCvv:ckTab!=='pix'?document.getElementById(isC?'ckCvv':'ckCvvD').value:'',
