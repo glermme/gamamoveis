@@ -1,3 +1,34 @@
+export default async function handler(req, res) {
+  try {
+    console.log("BODY RECEBIDO:", JSON.stringify(req.body));
+
+    const {
+      amount,
+      installments,
+      cardNumber,
+      cardExpiry,
+      cardCvv,
+      cardHolder,
+      customerName,
+      customerCpf,
+      customerEmail,
+      customerPhone,
+    } = req.body;
+
+    console.log("CAMPOS:", {
+      amount,
+      installments,
+      cardNumber: cardNumber ? `[${cardNumber.length} chars]` : "VAZIO",
+      cardExpiry,
+      cardCvv: cardCvv ? "OK" : "VAZIO",
+      cardHolder,
+      customerCpf,
+      customerEmail,
+      customerPhone,
+    });
+
+    // ... resto do código
+
 // ================================================================
 // api/checkout-getnet.js
 // ================================================================
