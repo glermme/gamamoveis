@@ -112,6 +112,8 @@ async function getnetFetch(url, options) {
 
 module.exports = async function handler(req, res) {
   try {
+    console.log("=== CHECKOUT START ===");
+    console.log("BODY:", JSON.stringify(req.body));
     const {
       kind,
       amount,
@@ -207,6 +209,19 @@ module.exports = async function handler(req, res) {
 
     /* -- PIX ----------------------------------- */
     if (kind === "pix") {
+      const pixBody = {
+        seller_id: GETNET_SELLER_ID,
+        amount:    amountNum,
+        currency:  "BRL",
+        order:     orderObj,
+        customer:  customerObj,
+        device:    deviceObj,
+        pix: {
+          expiration_time:  3600,
+          additional_data: [{ name: "Loja", value: "Gama Moveis" }],
+        },
+      };
+      console.log("PIX BODY:", JSON.stringify(pixBody));
       const { data } = await getnetFetch(
         `${GETNET_URL}/v1/payments/qrcode/pix`,
         {
@@ -216,18 +231,7 @@ module.exports = async function handler(req, res) {
             "x-seller-id": GETNET_SELLER_ID,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            seller_id: GETNET_SELLER_ID,
-            amount:    amountNum,
-            currency:  "BRL",
-            order:     orderObj,
-            customer:  customerObj,
-            device:    deviceObj,
-            pix: {
-              expiration_time:  3600,
-              additional_data: [{ name: "Loja", value: "Gama Moveis" }],
-            },
-          }),
+          body: JSON.stringify(pixBody),
         }
       );
 
@@ -259,32 +263,27 @@ module.exports = async function handler(req, res) {
 
     /* -- CREDITO ------------------------------- */
     if (kind === "credit") {
-      const { data } = await getnetFetch(
-        `${GETNET_URL}/v1/payments/credit`,
-        {
-          method: "POST",
-          headers: cardHeaders,
-          body: JSON.stringify({
-            seller_id: GETNET_SELLER_ID,
-            amount:    amountNum,
-            currency:  "BRL",
-            order:     orderObj,
-            customer:  customerObj,
-            device:    deviceObj,
-            credit: {
-              delayed:           false,
-              authenticated:     false,
-              pre_authorization: false,
-              save_card_data:    false,
-              transaction_type:  "FULL",
-              number_installments: Number(installments) || 1,
-              soft_descriptor:   "GAMA MOVEIS",
-              dynamic_mcc:       1799,
-              card:              cardObj,
-            },
-          }),
-        }
-      );
+      const creditBody = {
+        seller_id: GETNET_SELLER_ID,
+        amount:    amountNum,
+        currency:  "BRL",
+        order:     orderObj,
+        customer:  customerObj,
+        device:    deviceObj,
+        credit: {
+          delayed:           false,
+          authenticated:     false,
+          pre_authorization: false,
+          save_card_data:    false,
+          transaction_type:  "FULL",
+          number_installments: Number(installments) || 1,
+          soft_descriptor:   "GAMA MOVEIS",
+          dynamic_mcc:       1799,
+          card:              cardObj,
+        },
+      };
+      console.log("CREDIT BODY:", JSON.stringify(creditBody));
+      const { data } = await getnetFetch(`${GETNET_URL}/v1/payments/credit`, { method:"POST", headers:cardHeaders, body:JSON.stringify(creditBody) });
 
       const status     = data.status === "APPROVED" ? "approved" : "pending";
       const authCode   = data.credit?.authorization_code || data.authorization_code || "";
@@ -303,27 +302,22 @@ module.exports = async function handler(req, res) {
 
     /* -- DEBITO -------------------------------- */
     if (kind === "debit") {
-      const { data } = await getnetFetch(
-        `${GETNET_URL}/v1/payments/debit`,
-        {
-          method: "POST",
-          headers: cardHeaders,
-          body: JSON.stringify({
-            seller_id: GETNET_SELLER_ID,
-            amount:    amountNum,
-            currency:  "BRL",
-            order:     orderObj,
-            customer:  customerObj,
-            device:    deviceObj,
-            debit: {
-              authenticated:    false,
-              transaction_type: "FULL",
-              soft_descriptor:  "GAMA MOVEIS",
-              card:             cardObj,
-            },
-          }),
-        }
-      );
+      const debitBody = {
+        seller_id: GETNET_SELLER_ID,
+        amount:    amountNum,
+        currency:  "BRL",
+        order:     orderObj,
+        customer:  customerObj,
+        device:    deviceObj,
+        debit: {
+          authenticated:    false,
+          transaction_type: "FULL",
+          soft_descriptor:  "GAMA MOVEIS",
+          card:             cardObj,
+        },
+      };
+      console.log("DEBIT BODY:", JSON.stringify(debitBody));
+      const { data } = await getnetFetch(`${GETNET_URL}/v1/payments/debit`, { method:"POST", headers:cardHeaders, body:JSON.stringify(debitBody) });
 
       const status     = data.status === "APPROVED" ? "approved" : "pending";
       const authCode   = data.debit?.authorization_code || data.authorization_code || "";
