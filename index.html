@@ -277,6 +277,7 @@ footer{background:var(--charcoal);padding:4rem 5% 2rem}
   body{cursor:auto}.cursor,.cursor-ring{display:none}*{cursor:auto!important}
 }
 </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
 <div class="cursor" id="cursor"></div>
@@ -1013,11 +1014,14 @@ async function submitCkPayment(){
     if(ckTab==='pix'){
       btn.disabled=false;
       btn.innerHTML='Gerar Pix';
-      // A Getnet retorna qr_code dentro de additional_data
       const qrCode=(data.additional_data&&data.additional_data.qr_code)||data.qr_code||'';
       const qrImage=(data.additional_data&&data.additional_data.qr_code_image)||data.qr_code_image||'';
       if(qrImage){
         document.getElementById('ckPixQr').innerHTML=`<img src="data:image/png;base64,${qrImage}" alt="QR Code">`;
+      } else if(qrCode){
+        const qrDiv=document.getElementById('ckPixQr');
+        qrDiv.innerHTML='';
+        new QRCode(qrDiv,{text:qrCode,width:180,height:180,correctLevel:QRCode.CorrectLevel.M});
       }
       if(qrCode){
         const c=document.getElementById('ckPixCode');
@@ -1025,8 +1029,7 @@ async function submitCkPayment(){
         c.style.display='block';
         window._ckPixCode=qrCode;
       }
-      showToast('QR Code Pix gerado!');
-      ckPollPix(data.payment_id,'pix');
+      showToast('QR Code Pix gerado! Após pagar, você receberá a confirmação por e-mail.');
       return;
     }
 
@@ -1050,15 +1053,15 @@ function ckCopyPix(){
   }
 }
 
-async function ckPollPix(paymentId,kind='pix',attempts=0){
+async function ckPollPix(paymentId,attempts=0){
   if(attempts>20)return;
   setTimeout(async()=>{
     try{
-      const r=await fetch(`/api/status-getnet?payment_id=${paymentId}&kind=${kind}`);
+      const r=await fetch(`/api/status-getnet?payment_id=${paymentId}`);
       const d=await r.json();
-      if(d.status==='APPROVED'||d.status==='approved')ckShowSuccess(d);
-      else ckPollPix(paymentId,kind,attempts+1);
-    }catch{ckPollPix(paymentId,kind,attempts+1)}
+      if(d.status==='approved')ckShowSuccess(d);
+      else ckPollPix(paymentId,attempts+1);
+    }catch{ckPollPix(paymentId,attempts+1)}
   },6000);
 }
 
