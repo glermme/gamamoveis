@@ -23,8 +23,7 @@ async function getToken() {
       method: "POST",
       headers: {
         Authorization: `Basic ${credentials}`,
-        "Content-Type":
-          "application/x-www-form-urlencoded",
+        "Content-Type": "application/x-www-form-urlencoded",
       },
       body: "grant_type=client_credentials&scope=oob",
     }
@@ -47,19 +46,16 @@ export default async function handler(req, res) {
   try {
     const { payment_id } = req.query;
 
-    if (!payment_id) {
-      return res.status(400).json({
-        error: "payment_id não informado",
-      });
+    if (!payment_id || typeof payment_id !== "string" || !payment_id.trim()) {
+      return res.status(400).json({ error: "payment_id não informado" });
     }
 
     const token = await getToken();
 
     const response = await fetch(
-      `${GETNET_URL}/v1/payments/credit/${payment_id}`,
+      `${GETNET_URL}/v1/payments/credit/${payment_id.trim()}`,
       {
         method: "GET",
-
         headers: {
           Authorization: `Bearer ${token}`,
           "x-seller-id": GETNET_SELLER_ID,
@@ -70,12 +66,10 @@ export default async function handler(req, res) {
 
     const data = await response.json();
 
-    return res.status(200).json(data);
+    return res.status(response.ok ? 200 : response.status).json(data);
   } catch (err) {
-    console.error(err);
+    console.error("[status-getnet] Erro:", err.message);
 
-    return res.status(500).json({
-      error: err.message,
-    });
+    return res.status(500).json({ error: err.message });
   }
 }
