@@ -11,10 +11,14 @@ const GETNET_SANDBOX       = process.env.GETNET_SANDBOX !== "false";
 
 const GETNET_URL = GETNET_SANDBOX
   ? "https://api-sbx.globalgetnet.com"
-  : "https://api-prd.globalgetnet.com";
+  : "https://api.getnet.com.br";
 
 async function getToken() {
-  const res = await fetch(`${GETNET_URL}/authentication/oauth2/access_token`, {
+  const tokenPath = GETNET_SANDBOX
+    ? "/authentication/oauth2/access_token"
+    : "/auth/oauth/v2/token";
+
+  const res = await fetch(`${GETNET_URL}${tokenPath}`, {
     method: "POST",
     headers: {
       "Authorization": `Basic ${Buffer.from(`${GETNET_CLIENT_ID}:${GETNET_CLIENT_SECRET}`).toString("base64")}`,
