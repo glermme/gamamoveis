@@ -1013,17 +1013,20 @@ async function submitCkPayment(){
     if(ckTab==='pix'){
       btn.disabled=false;
       btn.innerHTML='Gerar Pix';
-      if(data.qr_code_image){
-        document.getElementById('ckPixQr').innerHTML=`<img src="data:image/png;base64,${data.qr_code_image}" alt="QR Code">`;
+      // A Getnet retorna qr_code dentro de additional_data
+      const qrCode=(data.additional_data&&data.additional_data.qr_code)||data.qr_code||'';
+      const qrImage=(data.additional_data&&data.additional_data.qr_code_image)||data.qr_code_image||'';
+      if(qrImage){
+        document.getElementById('ckPixQr').innerHTML=`<img src="data:image/png;base64,${qrImage}" alt="QR Code">`;
       }
-      if(data.qr_code){
+      if(qrCode){
         const c=document.getElementById('ckPixCode');
-        c.textContent=data.qr_code;
+        c.textContent=qrCode;
         c.style.display='block';
-        window._ckPixCode=data.qr_code;
+        window._ckPixCode=qrCode;
       }
       showToast('QR Code Pix gerado!');
-      ckPollPix(data.payment_id);
+      ckPollPix(data.payment_id,'pix');
       return;
     }
 
@@ -1047,15 +1050,15 @@ function ckCopyPix(){
   }
 }
 
-async function ckPollPix(paymentId,attempts=0){
+async function ckPollPix(paymentId,kind='pix',attempts=0){
   if(attempts>20)return;
   setTimeout(async()=>{
     try{
-      const r=await fetch(`/api/status-getnet?payment_id=${paymentId}`);
+      const r=await fetch(`/api/status-getnet?payment_id=${paymentId}&kind=${kind}`);
       const d=await r.json();
-      if(d.status==='approved')ckShowSuccess(d);
-      else ckPollPix(paymentId,attempts+1);
-    }catch{ckPollPix(paymentId,attempts+1)}
+      if(d.status==='APPROVED'||d.status==='approved')ckShowSuccess(d);
+      else ckPollPix(paymentId,kind,attempts+1);
+    }catch{ckPollPix(paymentId,kind,attempts+1)}
   },6000);
 }
 
