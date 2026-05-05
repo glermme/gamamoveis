@@ -46,6 +46,14 @@ module.exports = async function handler(req, res) {
   try {
     const { payment_id } = req.query;
 
+    // ── DEBUG ──────────────────────────────────
+    console.log("ENV CHECK:", {
+      clientId: process.env.GETNET_CLIENT_ID ? "OK" : "FALTANDO",
+      secret: process.env.GETNET_CLIENT_SECRET ? "OK" : "FALTANDO",
+      sellerId: process.env.GETNET_SELLER_ID ? "OK" : "FALTANDO",
+    });
+    console.log("payment_id:", payment_id);
+
     if (!payment_id || typeof payment_id !== "string" || !payment_id.trim()) {
       return res.status(400).json({ error: "payment_id não informado" });
     }
@@ -64,7 +72,15 @@ module.exports = async function handler(req, res) {
       }
     );
 
-    const data = await response.json();
+    const rawText = await response.text();
+    console.log("RESPOSTA GETNET RAW:", rawText);
+
+    let data;
+    try {
+      data = JSON.parse(rawText);
+    } catch {
+      throw new Error("Getnet retornou resposta não-JSON: " + rawText.slice(0, 200));
+    }
 
     return res.status(response.ok ? 200 : response.status).json(data);
   } catch (err) {
