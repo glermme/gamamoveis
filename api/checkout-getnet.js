@@ -107,6 +107,22 @@ async function getnetFetch(url, options) {
 }
 
 /* ───────────────────────────────────────────── */
+/* HELPER: transaction_type por parcelas        */
+/*                                              */
+/* A Getnet exige:                              */
+/*   1x  → "FULL"                               */
+/*   2x+ → "INSTALL_NO_INTEREST"               */
+/*                                              */
+/* Se quiser repassar juros ao cliente, troque  */
+/* "INSTALL_NO_INTEREST" por                   */
+/* "INSTALL_WITH_INTEREST" conforme sua regra. */
+/* ───────────────────────────────────────────── */
+
+function creditTransactionType(installments) {
+  return Number(installments) > 1 ? "INSTALL_NO_INTEREST" : "FULL";
+}
+
+/* ───────────────────────────────────────────── */
 /* HANDLER                                      */
 /* ───────────────────────────────────────────── */
 
@@ -160,10 +176,11 @@ module.exports = async function handler(req, res) {
     }
 
     // -- Prepara dados --------------------------
-    const token      = await getToken();
-    const customerId = "customer-" + String(customerCpf).replace(/\D/g, "");
-    const orderId    = reference || `GAMA-${Date.now()}`;
-    const amountNum  = Number(amount);
+    const token        = await getToken();
+    const customerId   = "customer-" + String(customerCpf).replace(/\D/g, "");
+    const orderId      = reference || `GAMA-${Date.now()}`;
+    const amountNum    = Number(amount);
+    const installNum   = Number(installments) || 1;
 
     const nameParts = customerName.trim().split(" ");
     const customerObj = {
@@ -199,7 +216,7 @@ module.exports = async function handler(req, res) {
       reference:      orderId,
       kind,
       amount:         amountNum,
-      installments:   Number(installments) || 1,
+      installments:   installNum,
       customer_name:  customerName,
       customer_email: customerEmail,
       customer_cpf:   String(customerCpf).replace(/\D/g, ""),
@@ -235,7 +252,6 @@ module.exports = async function handler(req, res) {
         }
       );
 
-      // Salva pedido no Supabase
       await insertOrder({ ...baseRow, tid: data.payment_id || null, status: "pending" });
 
       return res.status(200).json(data);
@@ -247,10 +263,10 @@ module.exports = async function handler(req, res) {
     const numberToken = await tokenizeCard(token, cardNumber, customerId);
 
     const cardObj = {
-      number_token:    numberToken,
-      cardholder_name: cardHolder.trim(),
-      security_code:   String(cardCvv).replace(/\D/g, ""),
-      brand:           detectBrand(cardNumber),
+      number_token:     numberToken,
+      cardholder_name:  cardHolder.trim(),
+      security_code:    String(cardCvv).replace(/\D/g, ""),
+      brand:            detectBrand(cardNumber),
       expiration_month: month.trim(),
       expiration_year:  year,
     };
@@ -263,6 +279,8 @@ module.exports = async function handler(req, res) {
 
     /* -- CREDITO ------------------------------- */
     if (kind === "credit") {
+      const txType = creditTransactionType(installNum);
+
       const creditBody = {
         seller_id: GETNET_SELLER_ID,
         amount:    amountNum,
@@ -271,19 +289,23 @@ module.exports = async function handler(req, res) {
         customer:  customerObj,
         device:    deviceObj,
         credit: {
-          delayed:           false,
-          authenticated:     false,
-          pre_authorization: false,
-          save_card_data:    false,
-          transaction_type:  "FULL",
-          number_installments: Number(installments) || 1,
-          soft_descriptor:   "GAMA MOVEIS",
-          dynamic_mcc:       1799,
-          card:              cardObj,
+          delayed:             false,
+          authenticated:       false,
+          pre_authorization:   false,
+          save_card_data:      false,
+          transaction_type:    txType,           // ← CORRIGIDO: "FULL" ou "INSTALL_NO_INTEREST"
+          number_installments: installNum,        // ← sempre número (nunca string)
+          soft_descriptor:     "GAMA MOVEIS",
+          dynamic_mcc:         1799,
+          card:                cardObj,
         },
       };
       console.log("CREDIT BODY:", JSON.stringify(creditBody));
-      const { data } = await getnetFetch(`${GETNET_URL}/v1/payments/credit`, { method:"POST", headers:cardHeaders, body:JSON.stringify(creditBody) });
+      const { data } = await getnetFetch(`${GETNET_URL}/v1/payments/credit`, {
+        method:  "POST",
+        headers: cardHeaders,
+        body:    JSON.stringify(creditBody),
+      });
 
       const status     = data.status === "APPROVED" ? "approved" : "pending";
       const authCode   = data.credit?.authorization_code || data.authorization_code || "";
@@ -302,6 +324,7 @@ module.exports = async function handler(req, res) {
 
     /* -- DEBITO -------------------------------- */
     if (kind === "debit") {
+      // Débito não suporta parcelamento — sempre "FULL"
       const debitBody = {
         seller_id: GETNET_SELLER_ID,
         amount:    amountNum,
@@ -317,7 +340,11 @@ module.exports = async function handler(req, res) {
         },
       };
       console.log("DEBIT BODY:", JSON.stringify(debitBody));
-      const { data } = await getnetFetch(`${GETNET_URL}/v1/payments/debit`, { method:"POST", headers:cardHeaders, body:JSON.stringify(debitBody) });
+      const { data } = await getnetFetch(`${GETNET_URL}/v1/payments/debit`, {
+        method:  "POST",
+        headers: cardHeaders,
+        body:    JSON.stringify(debitBody),
+      });
 
       const status     = data.status === "APPROVED" ? "approved" : "pending";
       const authCode   = data.debit?.authorization_code || data.authorization_code || "";
