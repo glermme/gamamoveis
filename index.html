@@ -1091,7 +1091,7 @@ async function submitCkPayment(){
       return;
     }
 
-    if(data.status==='approved'){
+    if(data.status==='approved'||data.status==='APPROVED'){
       ckShowSuccess(data);
     }else{
       throw new Error(data.message||'Pagamento recusado. Verifique os dados do cartão.');
