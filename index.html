@@ -963,7 +963,17 @@ function ckBuildInstallments(total){
 // Máscaras
 function ckMaskCpf(el){let v=el.value.replace(/\D/g,'').slice(0,11);v=v.replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d)/,'$1.$2').replace(/(\d{3})(\d{1,2})$/,'$1-$2');el.value=v}
 function ckMaskPhone(el){let v=el.value.replace(/\D/g,'').slice(0,11);v=v.replace(/(\d{2})(\d)/,'($1) $2').replace(/(\d{5})(\d)/,'$1-$2');el.value=v}
-function ckMaskCard(el){let v=el.value.replace(/\D/g,'').slice(0,16);v=v.replace(/(\d{4})/g,'$1 ').trim();el.value=v}
+function ckMaskCard(el){
+  let v=el.value.replace(/\D/g,'').slice(0,16);
+  // Amex: começa com 34 ou 37 — formato 4-6-5
+  if(/^3[47]/.test(v)){
+    v=v.slice(0,15);
+    v=v.replace(/(\d{4})(\d{1,6})?(\d{1,5})?/,(_,a,b,c)=>[a,b,c].filter(Boolean).join(' '));
+  } else {
+    v=v.replace(/(\d{4})/g,'$1 ').trim();
+  }
+  el.value=v;
+}
 function ckMaskZip(el){let v=el.value.replace(/\D/g,'').slice(0,8);v=v.replace(/(\d{5})(\d)/,'$1-$2');el.value=v}
 async function ckFetchCep(val){
   const cep=val.replace(/\D/g,'');
@@ -1003,7 +1013,7 @@ function ckValidate(){
     const exp=document.getElementById(isC?'ckExpiry':'ckExpiryD').value;
     const cvv=document.getElementById(isC?'ckCvv':'ckCvvD').value;
     const hld=document.getElementById(isC?'ckHolder':'ckHolderD').value.trim();
-    if(num.length<16)return'Número do cartão inválido';
+    if(num.length<15)return'Número do cartão inválido';
     if(!exp.includes('/')||exp.length<5)return'Validade inválida (use MM/AA)';
     if(cvv.length<3)return'CVV inválido';
     if(!hld||hld.length<3)return'Informe o nome do titular';
