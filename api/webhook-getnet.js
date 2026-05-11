@@ -32,36 +32,30 @@ async function updateOrder(paymentId, status) {
 }
 
 module.exports = async function handler(req, res) {
-  // GET: ping de validação da Getnet
-  if (req.method === "GET") {
-    return res.status(200).json({ ok: true });
-  }
-
-  if (req.method !== "POST") {
-    return res.status(405).json({ error: "Método não permitido" });
-  }
-
   try {
-    const event = req.body;
-    console.log("Webhook Getnet recebido:", JSON.stringify(event, null, 2));
+    // A Getnet envia PIX como GET com query params
+    // e outros pagamentos como POST com body JSON
+    const isGet = req.method === "GET";
+    const event = isGet ? req.query : req.body;
 
-    // A Getnet pode mandar o payment_id direto ou dentro de objetos aninhados
+    console.log("Webhook Getnet recebido:", req.method, JSON.stringify(event, null, 2));
+
+    if (req.method !== "GET" && req.method !== "POST") {
+      return res.status(405).json({ error: "Método não permitido" });
+    }
+
     const paymentId =
       event.payment_id ||
       (event.credit && event.credit.payment_id) ||
-      (event.debit && event.debit.payment_id) ||
-      (event.pix && event.pix.payment_id) ||
-      null;
+      (event.debit  && event.debit.payment_id)  ||
+      (event.pix    && event.pix.payment_id)    || null;
 
     const status = event.status || null;
 
     if (paymentId && status) {
       const normalized =
-        status === "APPROVED" || status === "PAID" || status === "CONFIRMED"
-          ? "approved"
-          : status === "CANCELED" || status === "DENIED"
-          ? "declined"
-          : "pending";
+        ["APPROVED","PAID","CONFIRMED"].includes(status) ? "approved" :
+        ["CANCELED","DENIED"].includes(status)           ? "declined" : "pending";
 
       await updateOrder(paymentId, normalized);
       console.log(`Pedido ${paymentId} → ${normalized}`);
@@ -69,7 +63,6 @@ module.exports = async function handler(req, res) {
       console.warn("Webhook sem payment_id ou status:", JSON.stringify(event));
     }
 
-    // Getnet espera 200 para não retentar
     return res.status(200).json({ received: true });
   } catch (err) {
     console.error("Erro webhook Getnet:", err);
