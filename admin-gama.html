@@ -301,12 +301,8 @@ tbody td{padding:1rem 1.2rem;font-size:0.82rem;color:var(--cream);vertical-align
    ================================================================ */
 
 // ── SUPABASE ──────────────────────────────────────────────────
-// app.supabase.com → seu projeto → Settings → API
-const SUPABASE_URL = "https://wxauioqgnhggubqmexkp.supabase.co";
-// Exemplo: "https://xyzxyzxyz.supabase.co"
-
-const SUPABASE_KEY = "sb_publishable_32Bo9wX1eig329hYHeevjA_2KW_2xz2";
-// Exemplo: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+const SUPABASE_URL = process.env.SUPABASE_URL || "";
+const SUPABASE_KEY = process.env.SUPABASE_KEY || "";
 
 // ── ACESSO AO PAINEL ──────────────────────────────────────────
 const ADMIN_USER = "admin";
